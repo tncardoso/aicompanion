@@ -5,131 +5,92 @@ use ratatui::{
 
 use crate::git::diff::{DiffLineKind, FileDiff};
 
-/// Build side-by-side diff lines from a FileDiff.
-/// Each returned Line has left and right halves separated by a │.
-/// `half_width` is the width of each side in characters.
-pub fn render(file_diff: &FileDiff, half_width: u16) -> Vec<Line<'static>> {
-    let hw = half_width as usize;
-    let mut lines: Vec<Line<'static>> = Vec::new();
+/// Build left (OLD) and right (NEW) line vectors for a two-pane diff.
+/// Both vectors always have the same length (shorter side is padded with empty lines).
+pub fn render(file_diff: &FileDiff) -> (Vec<Line<'static>>, Vec<Line<'static>>) {
+    let mut left: Vec<Line<'static>> = Vec::new();
+    let mut right: Vec<Line<'static>> = Vec::new();
 
-    // Header
-    lines.push(Line::from(vec![
-        Span::styled(
-            format!(" DIFF: {}", file_diff.path),
-            Style::default().fg(Color::White).add_modifier(Modifier::BOLD),
-        ),
-    ]));
-    lines.push(separator(hw));
-
-    // Column headers
-    lines.push(Line::from(vec![
-        Span::styled(pad("  OLD", hw), Style::default().fg(Color::DarkGray).add_modifier(Modifier::BOLD)),
-        Span::styled("│", Style::default().fg(Color::DarkGray)),
-        Span::styled(pad("  NEW", hw), Style::default().fg(Color::DarkGray).add_modifier(Modifier::BOLD)),
-    ]));
-    lines.push(separator(hw));
+    left.push(header_line("  OLD"));
+    right.push(header_line("  NEW"));
 
     for hunk in &file_diff.hunks {
-        // Hunk header line
-        lines.push(Line::from(Span::styled(
-            format!(" {}", truncate(&hunk.header, hw * 2 + 1)),
-            Style::default().fg(Color::Blue).add_modifier(Modifier::ITALIC),
-        )));
+        let hunk_line = hunk_header_line(&hunk.header);
+        left.push(hunk_line.clone());
+        right.push(hunk_line);
 
-        // Pair up lines: removed on left, added on right, context on both.
         let mut old_buf: Vec<String> = Vec::new();
         let mut new_buf: Vec<String> = Vec::new();
 
         for dl in &hunk.lines {
             match dl.kind {
                 DiffLineKind::Removed => old_buf.push(dl.content.clone()),
-                DiffLineKind::Added => new_buf.push(dl.content.clone()),
+                DiffLineKind::Added   => new_buf.push(dl.content.clone()),
                 DiffLineKind::Context => {
-                    // Flush any accumulated old/new pairs first.
-                    flush_pairs(&mut lines, &mut old_buf, &mut new_buf, hw);
-                    // Context appears on both sides.
-                    lines.push(context_line(&dl.content, hw));
+                    flush_pairs(&mut left, &mut right, &mut old_buf, &mut new_buf);
+                    let ctx = context_line(&dl.content);
+                    left.push(ctx.clone());
+                    right.push(ctx);
                 }
             }
         }
-        flush_pairs(&mut lines, &mut old_buf, &mut new_buf, hw);
-        lines.push(Line::from(""));
+        flush_pairs(&mut left, &mut right, &mut old_buf, &mut new_buf);
+        left.push(Line::from(""));
+        right.push(Line::from(""));
     }
 
-    lines
+    (left, right)
 }
 
-/// Flush accumulated removed/added lines as paired side-by-side rows.
-fn flush_pairs(lines: &mut Vec<Line<'static>>, old: &mut Vec<String>, new: &mut Vec<String>, hw: usize) {
-    let max_rows = old.len().max(new.len());
-    for i in 0..max_rows {
-        let left = old.get(i).cloned().unwrap_or_default();
-        let right = new.get(i).cloned().unwrap_or_default();
-        lines.push(diff_line(&left, &right, hw, old.get(i).is_some(), new.get(i).is_some()));
+fn flush_pairs(
+    left: &mut Vec<Line<'static>>,
+    right: &mut Vec<Line<'static>>,
+    old: &mut Vec<String>,
+    new: &mut Vec<String>,
+) {
+    let rows = old.len().max(new.len());
+    for i in 0..rows {
+        left.push(removed_line(old.get(i).map(String::as_str)));
+        right.push(added_line(new.get(i).map(String::as_str)));
     }
     old.clear();
     new.clear();
 }
 
-fn diff_line(left: &str, right: &str, hw: usize, has_left: bool, has_right: bool) -> Line<'static> {
-    let left_prefix = if has_left { "- " } else { "  " };
-    let right_prefix = if has_right { "+ " } else { "  " };
-    let left_content = format!("{}{}", left_prefix, left);
-    let right_content = format!("{}{}", right_prefix, right);
-
-    let left_style = if has_left {
-        Style::default().fg(Color::Red)
-    } else {
-        Style::default()
-    };
-    let right_style = if has_right {
-        Style::default().fg(Color::Green)
-    } else {
-        Style::default()
-    };
-
-    Line::from(vec![
-        Span::styled(pad(&left_content, hw), left_style),
-        Span::styled("│", Style::default().fg(Color::DarkGray)),
-        Span::styled(pad(&right_content, hw), right_style),
-    ])
+fn removed_line(content: Option<&str>) -> Line<'static> {
+    match content {
+        Some(s) => Line::from(Span::styled(
+            format!("- {s}"),
+            Style::default().fg(Color::Red),
+        )),
+        None => Line::from(""),
+    }
 }
 
-fn context_line(content: &str, hw: usize) -> Line<'static> {
-    let padded = pad(&format!("  {}", content), hw);
-    Line::from(vec![
-        Span::raw(padded.clone()),
-        Span::styled("│", Style::default().fg(Color::DarkGray)),
-        Span::raw(padded),
-    ])
+fn added_line(content: Option<&str>) -> Line<'static> {
+    match content {
+        Some(s) => Line::from(Span::styled(
+            format!("+ {s}"),
+            Style::default().fg(Color::Green),
+        )),
+        None => Line::from(""),
+    }
 }
 
-fn separator(hw: usize) -> Line<'static> {
+fn context_line(content: &str) -> Line<'static> {
+    Line::from(format!("  {content}"))
+}
+
+fn header_line(label: &'static str) -> Line<'static> {
     Line::from(Span::styled(
-        format!("{}┼{}", "─".repeat(hw), "─".repeat(hw)),
-        Style::default().fg(Color::DarkGray),
+        label,
+        Style::default().fg(Color::DarkGray).add_modifier(Modifier::BOLD),
     ))
 }
 
-/// Pad or truncate `s` to exactly `width` characters.
-fn pad(s: &str, width: usize) -> String {
-    let chars: Vec<char> = s.chars().collect();
-    if chars.len() >= width {
-        chars[..width].iter().collect()
-    } else {
-        let mut result: String = chars.iter().collect();
-        for _ in 0..(width - chars.len()) {
-            result.push(' ');
-        }
-        result
-    }
-}
-
-fn truncate(s: &str, max: usize) -> String {
-    let chars: Vec<char> = s.chars().collect();
-    if chars.len() <= max {
-        s.to_string()
-    } else {
-        format!("{}…", chars[..max - 1].iter().collect::<String>())
-    }
+fn hunk_header_line(header: &str) -> Line<'static> {
+    Line::from(Span::styled(
+        format!(" {header}"),
+        Style::default().fg(Color::Blue).add_modifier(Modifier::ITALIC),
+    ))
 }

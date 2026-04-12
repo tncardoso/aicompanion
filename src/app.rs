@@ -124,6 +124,12 @@ impl App {
             KeyCode::Char('u') => {
                 self.ui.right.scroll_diff_up(10);
             }
+            KeyCode::Char('l') | KeyCode::Right => {
+                self.ui.right.scroll_diff_right(4);
+            }
+            KeyCode::Char('h') | KeyCode::Left => {
+                self.ui.right.scroll_diff_left(4);
+            }
             _ => {}
         }
     }

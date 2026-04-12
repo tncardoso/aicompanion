@@ -22,6 +22,7 @@ pub struct FileEntry {
 pub struct RightPanel {
     pub list_state: ListState,
     pub diff_scroll: usize,
+    pub diff_hscroll: usize,
     pub entries: Vec<FileEntry>,
 }
 
@@ -30,6 +31,7 @@ impl Default for RightPanel {
         Self {
             list_state: ListState::default(),
             diff_scroll: 0,
+            diff_hscroll: 0,
             entries: Vec::new(),
         }
     }
@@ -74,6 +76,7 @@ impl RightPanel {
             .unwrap_or(0);
         self.list_state.select(Some(next));
         self.diff_scroll = 0;
+        self.diff_hscroll = 0;
     }
 
     pub fn select_prev(&mut self) {
@@ -83,6 +86,7 @@ impl RightPanel {
             .unwrap_or(0);
         self.list_state.select(Some(prev));
         self.diff_scroll = 0;
+        self.diff_hscroll = 0;
     }
 
     pub fn scroll_diff_down(&mut self, amount: usize) {
@@ -91,6 +95,14 @@ impl RightPanel {
 
     pub fn scroll_diff_up(&mut self, amount: usize) {
         self.diff_scroll = self.diff_scroll.saturating_sub(amount);
+    }
+
+    pub fn scroll_diff_right(&mut self, amount: usize) {
+        self.diff_hscroll = self.diff_hscroll.saturating_add(amount);
+    }
+
+    pub fn scroll_diff_left(&mut self, amount: usize) {
+        self.diff_hscroll = self.diff_hscroll.saturating_sub(amount);
     }
 
     pub fn render(&mut self, frame: &mut Frame, area: Rect, git_state: &GitState, list_focused: bool, diff_focused: bool) {
@@ -187,48 +199,76 @@ impl RightPanel {
                 let path = entry.path.clone();
                 let is_untracked = entry.is_untracked;
 
-                let half_width = area.width.saturating_sub(3) / 2;
-
-                let diff_lines = if is_untracked {
-                    render_untracked_diff(&path, &git_state.repo_root, half_width)
+                let (left_lines, right_lines) = if is_untracked {
+                    untracked_diff_lines(&path, &git_state.repo_root)
                 } else {
-                    let file_diff = git_state.diffs.iter().find(|d| d.path == path);
-                    match file_diff {
-                        Some(fd) => diff_view::render(fd, half_width),
-                        None => vec![Line::from(Span::styled(
-                            " No diff available",
-                            Style::default().fg(Color::DarkGray),
-                        ))],
+                    match git_state.diffs.iter().find(|d| d.path == path) {
+                        Some(fd) => diff_view::render(fd),
+                        None => (
+                            vec![Line::from(Span::styled(" No diff available", Style::default().fg(Color::DarkGray)))],
+                            vec![Line::from("")],
+                        ),
                     }
                 };
 
-                let total = diff_lines.len();
-                let max_scroll = total.saturating_sub(area.height.saturating_sub(2) as usize);
-                if self.diff_scroll > max_scroll {
-                    self.diff_scroll = max_scroll;
-                }
-
+                // Render the outer block and obtain the inner area.
                 let title = format!(" Diff: {} ", path);
-                let paragraph = Paragraph::new(diff_lines)
-                    .block(
-                        Block::default()
-                            .title(Span::styled(
-                                title,
-                                Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD),
-                            ))
-                            .borders(Borders::ALL)
-                            .border_style(border_style),
-                    )
-                    .scroll((self.diff_scroll as u16, 0));
+                let outer_block = Block::default()
+                    .title(Span::styled(title, Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD)))
+                    .borders(Borders::ALL)
+                    .border_style(border_style);
+                let inner = outer_block.inner(area);
+                frame.render_widget(outer_block, area);
 
-                frame.render_widget(paragraph, area);
+                // Split inner area: left pane │ right pane.
+                let panes = Layout::default()
+                    .direction(Direction::Horizontal)
+                    .constraints([Constraint::Fill(1), Constraint::Length(1), Constraint::Fill(1)])
+                    .split(inner);
+                let left_area  = panes[0];
+                let sep_area   = panes[1];
+                let right_area = panes[2];
 
-                if total > area.height as usize {
-                    let mut scrollbar_state = ScrollbarState::new(total).position(self.diff_scroll);
+                // Compute scroll bounds.
+                let total_lines = left_lines.len().max(right_lines.len());
+                let viewport_h  = inner.height as usize;
+                let viewport_w  = left_area.width as usize;
+
+                let max_left_w  = line_width_max(&left_lines);
+                let max_right_w = line_width_max(&right_lines);
+                let max_content_w = max_left_w.max(max_right_w);
+
+                let max_vscroll = total_lines.saturating_sub(viewport_h);
+                let max_hscroll = max_content_w.saturating_sub(viewport_w);
+                if self.diff_scroll  > max_vscroll { self.diff_scroll  = max_vscroll; }
+                if self.diff_hscroll > max_hscroll { self.diff_hscroll = max_hscroll; }
+
+                let scroll = (self.diff_scroll as u16, self.diff_hscroll as u16);
+
+                // Left pane (OLD).
+                frame.render_widget(Paragraph::new(left_lines).scroll(scroll), left_area);
+
+                // Separator column.
+                let sep_lines: Vec<Line<'static>> = (0..sep_area.height as usize)
+                    .map(|_| Line::from(Span::styled("│", Style::default().fg(Color::DarkGray))))
+                    .collect();
+                frame.render_widget(Paragraph::new(sep_lines), sep_area);
+
+                // Right pane (NEW).
+                frame.render_widget(Paragraph::new(right_lines).scroll(scroll), right_area);
+
+                // Vertical scrollbar on the outer right edge.
+                if total_lines > viewport_h {
+                    let mut state = ScrollbarState::new(total_lines).position(self.diff_scroll);
                     frame.render_stateful_widget(
-                        Scrollbar::new(ScrollbarOrientation::VerticalRight),
-                        area,
-                        &mut scrollbar_state,
+                        Scrollbar::new(ScrollbarOrientation::VerticalRight), area, &mut state,
+                    );
+                }
+                // Horizontal scrollbar on the outer bottom edge.
+                if max_content_w > viewport_w {
+                    let mut state = ScrollbarState::new(max_content_w).position(self.diff_hscroll);
+                    frame.render_stateful_widget(
+                        Scrollbar::new(ScrollbarOrientation::HorizontalBottom), area, &mut state,
                     );
                 }
             }
@@ -236,42 +276,31 @@ impl RightPanel {
     }
 }
 
-/// Render an untracked file as a simple "new file" diff (all lines added).
-fn render_untracked_diff(path: &str, repo_root: &std::path::Path, half_width: u16) -> Vec<Line<'static>> {
-    let full_path = repo_root.join(path);
-    let source = std::fs::read_to_string(&full_path).unwrap_or_default();
-    let hw = half_width as usize;
+/// Build left (OLD) and right (NEW) line vectors for an untracked (all-added) file.
+fn untracked_diff_lines(path: &str, repo_root: &std::path::Path) -> (Vec<Line<'static>>, Vec<Line<'static>>) {
+    let source = std::fs::read_to_string(repo_root.join(path)).unwrap_or_default();
 
-    let mut lines = vec![
-        Line::from(Span::styled(
-            format!(" NEW FILE: {}", path),
-            Style::default().fg(Color::Green).add_modifier(Modifier::BOLD),
-        )),
-        Line::from(Span::styled(
-            format!("{}┼{}", "─".repeat(hw), "─".repeat(hw)),
-            Style::default().fg(Color::DarkGray),
-        )),
-    ];
+    let mut left: Vec<Line<'static>>  = Vec::new();
+    let mut right: Vec<Line<'static>> = Vec::new();
 
-    for source_line in source.lines() {
-        let content = format!("+ {}", source_line);
-        let padded = pad_str(&content, hw);
-        lines.push(Line::from(vec![
-            Span::styled(padded.clone(), Style::default().fg(Color::Green)),
-            Span::styled("│", Style::default().fg(Color::DarkGray)),
-            Span::styled(padded, Style::default().fg(Color::Green)),
-        ]));
+    left.push(Line::from(Span::styled("  OLD", Style::default().fg(Color::DarkGray).add_modifier(Modifier::BOLD))));
+    right.push(Line::from(Span::styled(
+        format!("  NEW FILE: {path}"),
+        Style::default().fg(Color::Green).add_modifier(Modifier::BOLD),
+    )));
+
+    for line in source.lines() {
+        left.push(Line::from(""));
+        right.push(Line::from(Span::styled(format!("+ {line}"), Style::default().fg(Color::Green))));
     }
-    lines
+
+    (left, right)
 }
 
-fn pad_str(s: &str, width: usize) -> String {
-    let chars: Vec<char> = s.chars().collect();
-    if chars.len() >= width {
-        chars[..width].iter().collect()
-    } else {
-        let mut result: String = chars.iter().collect();
-        result.extend(std::iter::repeat(' ').take(width - chars.len()));
-        result
-    }
+/// Return the maximum char-width across all lines.
+fn line_width_max(lines: &[Line<'static>]) -> usize {
+    lines.iter()
+        .map(|l| l.spans.iter().map(|s| s.content.chars().count()).sum::<usize>())
+        .max()
+        .unwrap_or(0)
 }
