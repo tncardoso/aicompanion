@@ -19,10 +19,7 @@ pub fn language_for_extension(ext: &str) -> Option<Language> {
 /// The query captures the function name under `@name`.
 pub fn function_def_query(ext: &str) -> Option<&'static str> {
     match ext {
-        "rs" => Some(
-            r#"(function_item name: (identifier) @name)
-               (impl_item (function_item name: (identifier) @name))"#,
-        ),
+        "rs" => Some(r#"(function_item name: (identifier) @name)"#),
         "py" => Some(r#"(function_definition name: (identifier) @name)"#),
         "js" | "jsx" | "mjs" | "cjs" => Some(
             r#"(function_declaration name: (identifier) @name)

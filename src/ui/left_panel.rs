@@ -118,12 +118,7 @@ impl LeftPanel {
                 Style::default().fg(Color::Gray)
             };
 
-            let file_stem = std::path::Path::new(&m.file)
-                .file_name()
-                .map(|s| s.to_string_lossy().into_owned())
-                .unwrap_or_else(|| m.file.clone());
-
-            let file_col = truncate_col(&file_stem, 22);
+            let file_col = truncate_col(&m.file, 22);
             let fn_col = truncate_col(&m.name, 20);
 
             let cycl_style = if crate::analysis::is_warning(m.cyclomatic, thresholds.cyclomatic) {

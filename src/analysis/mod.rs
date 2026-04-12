@@ -31,6 +31,28 @@ pub fn run(state: &GitState) -> Result<Analysis> {
         }
     }
 
+    // Also analyze untracked (new) source files so their metrics are visible.
+    let diffed_paths: std::collections::HashSet<&str> =
+        state.diffs.iter().map(|d| d.path.as_str()).collect();
+    for untracked in &state.untracked {
+        if diffed_paths.contains(untracked.path.as_str()) {
+            continue; // already covered above
+        }
+        let ext = std::path::Path::new(&untracked.path)
+            .extension()
+            .and_then(|e| e.to_str())
+            .unwrap_or("");
+        if parser::language_for_extension(ext).is_none() {
+            continue; // not a supported language
+        }
+        let full_path = state.repo_root.join(&untracked.path);
+        if full_path.exists() {
+            if let Ok(source) = std::fs::read_to_string(&full_path) {
+                files.push((untracked.path.clone(), source));
+            }
+        }
+    }
+
     let mut all_metrics = Vec::new();
     for (path, source) in &files {
         let ext = Path::new(path)
