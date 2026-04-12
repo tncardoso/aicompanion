@@ -1,6 +1,12 @@
 # aicompanion
 
+<p align="center">
+  <img src="assets/logo.png" alt="aicompanion logo" width="180"/>
+</p>
+
 A terminal UI for reviewing AI-generated code changes. Run it inside any git repository to get an instant complexity analysis of everything that has changed since the last commit.
+
+![aicompanion TUI](assets/tui.png)
 
 ```
 ┌─ Call Graph ────────────┐┌─ Files ──────────────────────────────────────────┐
