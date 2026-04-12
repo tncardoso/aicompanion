@@ -12,14 +12,59 @@ use crate::config::Thresholds;
 
 use super::graph;
 
+/// Sort order for the metrics table.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum MetricSort {
+    #[default]
+    CyclomaticValue,
+    CyclomaticDelta,
+    CognitiveValue,
+    CognitiveDelta,
+    CouplingValue,
+    CouplingDelta,
+}
+
+impl MetricSort {
+    const ALL: [MetricSort; 6] = [
+        MetricSort::CyclomaticValue,
+        MetricSort::CyclomaticDelta,
+        MetricSort::CognitiveValue,
+        MetricSort::CognitiveDelta,
+        MetricSort::CouplingValue,
+        MetricSort::CouplingDelta,
+    ];
+
+    pub fn next(self) -> Self {
+        let idx = Self::ALL.iter().position(|s| *s == self).unwrap_or(0);
+        Self::ALL[(idx + 1) % Self::ALL.len()]
+    }
+
+    pub fn prev(self) -> Self {
+        let idx = Self::ALL.iter().position(|s| *s == self).unwrap_or(0);
+        Self::ALL[(idx + Self::ALL.len() - 1) % Self::ALL.len()]
+    }
+
+    pub fn label(self) -> &'static str {
+        match self {
+            MetricSort::CyclomaticValue => "Cyclomatic Value",
+            MetricSort::CyclomaticDelta => "Cyclomatic Delta",
+            MetricSort::CognitiveValue  => "Cognitive Value",
+            MetricSort::CognitiveDelta  => "Cognitive Delta",
+            MetricSort::CouplingValue   => "Coupling Value",
+            MetricSort::CouplingDelta   => "Coupling Delta",
+        }
+    }
+}
+
 pub struct LeftPanel {
     pub graph_scroll: usize,
     pub metrics_scroll: usize,
+    pub sort: MetricSort,
 }
 
 impl Default for LeftPanel {
     fn default() -> Self {
-        Self { graph_scroll: 0, metrics_scroll: 0 }
+        Self { graph_scroll: 0, metrics_scroll: 0, sort: MetricSort::default() }
     }
 }
 
@@ -37,8 +82,13 @@ impl LeftPanel {
         self.metrics_scroll = self.metrics_scroll.saturating_sub(amount);
     }
 
-    pub fn render(&mut self, frame: &mut Frame, area: Rect, analysis: &Analysis, thresholds: &Thresholds, focused: bool) {
-        let border_style = if focused {
+    pub fn render(&mut self, frame: &mut Frame, area: Rect, analysis: &Analysis, thresholds: &Thresholds, graph_focused: bool, metrics_focused: bool) {
+        let graph_border = if graph_focused {
+            Style::default().fg(Color::Cyan)
+        } else {
+            Style::default().fg(Color::DarkGray)
+        };
+        let metrics_border = if metrics_focused {
             Style::default().fg(Color::Cyan)
         } else {
             Style::default().fg(Color::DarkGray)
@@ -50,8 +100,8 @@ impl LeftPanel {
             .constraints([Constraint::Percentage(45), Constraint::Percentage(55)])
             .split(area);
 
-        self.render_graph(frame, chunks[0], analysis, border_style);
-        self.render_metrics(frame, chunks[1], analysis, thresholds, border_style);
+        self.render_graph(frame, chunks[0], analysis, graph_border);
+        self.render_metrics(frame, chunks[1], analysis, thresholds, metrics_border);
     }
 
     fn render_graph(&mut self, frame: &mut Frame, area: Rect, analysis: &Analysis, border_style: Style) {
@@ -87,11 +137,23 @@ impl LeftPanel {
     }
 
     fn render_metrics(&mut self, frame: &mut Frame, area: Rect, analysis: &Analysis, thresholds: &Thresholds, border_style: Style) {
-        let metrics = &analysis.metrics;
+        // Sort a local copy of the metrics according to the current sort order.
+        let mut metrics = analysis.metrics.clone();
+        metrics.sort_by(|a, b| {
+            let cmp = match self.sort {
+                MetricSort::CyclomaticValue => b.cyclomatic.cmp(&a.cyclomatic),
+                MetricSort::CyclomaticDelta => cmp_delta(a.cyclomatic_delta, a.cyclomatic, b.cyclomatic_delta, b.cyclomatic),
+                MetricSort::CognitiveValue  => b.cognitive.cmp(&a.cognitive),
+                MetricSort::CognitiveDelta  => cmp_delta(a.cognitive_delta, a.cognitive, b.cognitive_delta, b.cognitive),
+                MetricSort::CouplingValue   => b.coupling.cmp(&a.coupling),
+                MetricSort::CouplingDelta   => cmp_delta(a.coupling_delta, a.coupling, b.coupling_delta, b.coupling),
+            };
+            cmp
+        });
 
         let header = Line::from(vec![
             Span::styled(
-                format!("{:<22} {:<20} {:>10} {:>10} {:>10}  ",
+                format!(" {:<22}{:<20}{:>10}{:>10}{:>10}  ",
                     "File", "Function", "Cycl", "Cogn", "Cpl"),
                 Style::default().fg(Color::White).add_modifier(Modifier::BOLD | Modifier::UNDERLINED),
             ),
@@ -111,7 +173,7 @@ impl LeftPanel {
             )));
         }
 
-        for m in metrics {
+        for m in &metrics {
             lines.push(self.metric_row(m, thresholds));
         }
 
@@ -209,6 +271,13 @@ fn metric_cell<'a>(
             spans.push(Span::styled(format!("{:>WIDTH$}", value), val_style));
         }
     }
+}
+
+/// Compare two entries by delta DESC, falling back to the current value when delta is `None`.
+fn cmp_delta(a_delta: Option<i64>, a_val: u32, b_delta: Option<i64>, b_val: u32) -> std::cmp::Ordering {
+    let a = a_delta.unwrap_or(a_val as i64);
+    let b = b_delta.unwrap_or(b_val as i64);
+    b.cmp(&a)
 }
 
 /// Truncate from the right, keeping the start: `"longname…"`

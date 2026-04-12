@@ -21,7 +21,8 @@ use right_panel::RightPanel;
 /// Which panel currently has keyboard focus.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Focus {
-    Left,
+    Left,       // call graph
+    Metrics,    // metrics table
     Right,      // file list
     RightDiff,  // diff pane
 }
@@ -45,7 +46,8 @@ impl Default for Ui {
 impl Ui {
     pub fn toggle_focus(&mut self) {
         self.focus = match self.focus {
-            Focus::Left => Focus::Right,
+            Focus::Left => Focus::Metrics,
+            Focus::Metrics => Focus::Right,
             Focus::Right => Focus::RightDiff,
             Focus::RightDiff => Focus::Left,
         };
@@ -73,19 +75,24 @@ impl Ui {
             .constraints([Constraint::Percentage(40), Constraint::Percentage(60)])
             .split(main_area);
 
-        self.left.render(frame, panels[0], analysis, &config.thresholds, self.focus == Focus::Left);
+        self.left.render(
+            frame, panels[0], analysis, &config.thresholds,
+            self.focus == Focus::Left,
+            self.focus == Focus::Metrics,
+        );
         self.right.render(
             frame, panels[1], git_state,
             self.focus == Focus::Right,
             self.focus == Focus::RightDiff,
         );
-        render_status_bar(frame, status_area, self.focus);
+        render_status_bar(frame, status_area, self.focus, &self.left.sort);
     }
 }
 
-fn render_status_bar(frame: &mut Frame, area: Rect, focus: Focus) {
+fn render_status_bar(frame: &mut Frame, area: Rect, focus: Focus, sort: &left_panel::MetricSort) {
     let focus_label = match focus {
         Focus::Left => "LEFT",
+        Focus::Metrics => "METRICS",
         Focus::Right => "FILES",
         Focus::RightDiff => "DIFF",
     };
@@ -103,7 +110,9 @@ fn render_status_bar(frame: &mut Frame, area: Rect, focus: Focus) {
         Span::styled("q", Style::default().fg(Color::Yellow)),
         Span::styled(":quit  ", Style::default().fg(Color::DarkGray)),
         Span::styled("r", Style::default().fg(Color::Yellow)),
-        Span::styled(":reload", Style::default().fg(Color::DarkGray)),
+        Span::styled(":reload  ", Style::default().fg(Color::DarkGray)),
+        Span::styled("</>", Style::default().fg(Color::Yellow)),
+        Span::styled(format!(":sort  Sort: {}", sort.label()), Style::default().fg(Color::DarkGray)),
     ];
     let bar = Paragraph::new(Line::from(spans))
         .style(Style::default().bg(Color::Reset));

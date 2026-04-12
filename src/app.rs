@@ -73,6 +73,14 @@ impl App {
                         self.reload();
                         return true;
                     }
+                    KeyCode::Char('>') => {
+                        self.ui.left.sort = self.ui.left.sort.next();
+                        return true;
+                    }
+                    KeyCode::Char('<') => {
+                        self.ui.left.sort = self.ui.left.sort.prev();
+                        return true;
+                    }
                     _ => {}
                 }
 
@@ -81,6 +89,7 @@ impl App {
                     Focus::Right => self.handle_right_keys(key.code),
                     Focus::RightDiff => self.handle_diff_keys(key.code),
                     Focus::Left => self.handle_left_keys(key.code),
+                    Focus::Metrics => self.handle_metrics_keys(key.code),
                 }
                 true
             }
@@ -127,11 +136,23 @@ impl App {
             KeyCode::Char('k') | KeyCode::Up => {
                 self.ui.left.scroll_graph_up(1);
             }
+            _ => {}
+        }
+    }
+
+    fn handle_metrics_keys(&mut self, code: KeyCode) {
+        match code {
+            KeyCode::Char('j') | KeyCode::Down => {
+                self.ui.left.scroll_metrics_down(1);
+            }
+            KeyCode::Char('k') | KeyCode::Up => {
+                self.ui.left.scroll_metrics_up(1);
+            }
             KeyCode::Char('d') => {
-                self.ui.left.scroll_metrics_down(3);
+                self.ui.left.scroll_metrics_down(10);
             }
             KeyCode::Char('u') => {
-                self.ui.left.scroll_metrics_up(3);
+                self.ui.left.scroll_metrics_up(10);
             }
             _ => {}
         }
