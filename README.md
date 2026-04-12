@@ -8,23 +8,6 @@ A terminal UI for reviewing AI-generated code changes. Run it inside any git rep
 
 ![aicompanion TUI](assets/tui.png)
 
-```
-┌─ Call Graph ────────────┐┌─ Files ──────────────────────────────────────────┐
-│                         ││  src/analysis/mod.rs                    +42  -7  │
-│  run                    ││  src/ui/left_panel.rs                   +18  -3  │
-│  └─ analyse_file        │└──────────────────────────────────────────────────┘
-│     ├─ compute_cyclo    │┌─ Diff ───────────────────────────────────────────┐
-│     ├─ compute_cogni    ││ @@ -34,6 +34,28 @@                               │
-│     └─ compute_coupl    ││   let mut files = Vec::new();                    │
-│                         ││ + for untracked in &state.untracked {            │
-├─ Metrics ───────────────││ +     ...                                        │
-│ File         Function   ││                                                  │
-│ mod.rs       run     ⚠  ││                                                  │
-│ mod.rs       is_warn    ││                                                  │
-│ left_panel   render     ││                                                  │
-└─────────────────────────┘└──────────────────────────────────────────────────┘
-```
-
 ## Why
 
 AI code generation can introduce functions that are technically correct but hard to maintain — deeply nested logic, large fan-out, or tightly coupled call chains. aicompanion surfaces these problems at review time, before the code is merged.
