@@ -22,7 +22,8 @@ use right_panel::RightPanel;
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Focus {
     Left,
-    Right,
+    Right,      // file list
+    RightDiff,  // diff pane
 }
 
 pub struct Ui {
@@ -45,7 +46,8 @@ impl Ui {
     pub fn toggle_focus(&mut self) {
         self.focus = match self.focus {
             Focus::Left => Focus::Right,
-            Focus::Right => Focus::Left,
+            Focus::Right => Focus::RightDiff,
+            Focus::RightDiff => Focus::Left,
         };
     }
 
@@ -72,7 +74,11 @@ impl Ui {
             .split(main_area);
 
         self.left.render(frame, panels[0], analysis, &config.thresholds, self.focus == Focus::Left);
-        self.right.render(frame, panels[1], git_state, self.focus == Focus::Right);
+        self.right.render(
+            frame, panels[1], git_state,
+            self.focus == Focus::Right,
+            self.focus == Focus::RightDiff,
+        );
         render_status_bar(frame, status_area, self.focus);
     }
 }
@@ -80,7 +86,12 @@ impl Ui {
 fn render_status_bar(frame: &mut Frame, area: Rect, focus: Focus) {
     let focus_label = match focus {
         Focus::Left => "LEFT",
-        Focus::Right => "RIGHT",
+        Focus::Right => "FILES",
+        Focus::RightDiff => "DIFF",
+    };
+    let nav_hint = match focus {
+        Focus::RightDiff => "j/k:scroll  ",
+        _ => "j/k:navigate  ",
     };
     let spans = vec![
         Span::styled(" aicompanion ", Style::default().fg(Color::Black).bg(Color::Cyan).add_modifier(Modifier::BOLD)),
@@ -88,7 +99,7 @@ fn render_status_bar(frame: &mut Frame, area: Rect, focus: Focus) {
         Span::styled("  Tab", Style::default().fg(Color::Yellow)),
         Span::styled(":switch  ", Style::default().fg(Color::DarkGray)),
         Span::styled("j/k", Style::default().fg(Color::Yellow)),
-        Span::styled(":navigate  ", Style::default().fg(Color::DarkGray)),
+        Span::styled(nav_hint.to_string(), Style::default().fg(Color::DarkGray)),
         Span::styled("q", Style::default().fg(Color::Yellow)),
         Span::styled(":quit  ", Style::default().fg(Color::DarkGray)),
         Span::styled("r", Style::default().fg(Color::Yellow)),

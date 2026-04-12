@@ -79,6 +79,7 @@ impl App {
                 // Focus-specific shortcuts.
                 match self.ui.focus {
                     Focus::Right => self.handle_right_keys(key.code),
+                    Focus::RightDiff => self.handle_diff_keys(key.code),
                     Focus::Left => self.handle_left_keys(key.code),
                 }
                 true
@@ -96,12 +97,23 @@ impl App {
             KeyCode::Char('k') | KeyCode::Up => {
                 self.ui.right.select_prev();
             }
-            // Scroll diff pane with Ctrl+j / Ctrl+k or d/u.
+            _ => {}
+        }
+    }
+
+    fn handle_diff_keys(&mut self, code: KeyCode) {
+        match code {
+            KeyCode::Char('j') | KeyCode::Down => {
+                self.ui.right.scroll_diff_down(1);
+            }
+            KeyCode::Char('k') | KeyCode::Up => {
+                self.ui.right.scroll_diff_up(1);
+            }
             KeyCode::Char('d') => {
-                self.ui.right.scroll_diff_down(5);
+                self.ui.right.scroll_diff_down(10);
             }
             KeyCode::Char('u') => {
-                self.ui.right.scroll_diff_up(5);
+                self.ui.right.scroll_diff_up(10);
             }
             _ => {}
         }

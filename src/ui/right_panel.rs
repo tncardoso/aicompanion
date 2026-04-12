@@ -93,8 +93,13 @@ impl RightPanel {
         self.diff_scroll = self.diff_scroll.saturating_sub(amount);
     }
 
-    pub fn render(&mut self, frame: &mut Frame, area: Rect, git_state: &GitState, focused: bool) {
-        let border_style = if focused {
+    pub fn render(&mut self, frame: &mut Frame, area: Rect, git_state: &GitState, list_focused: bool, diff_focused: bool) {
+        let list_border_style = if list_focused {
+            Style::default().fg(Color::Cyan)
+        } else {
+            Style::default().fg(Color::DarkGray)
+        };
+        let diff_border_style = if diff_focused {
             Style::default().fg(Color::Cyan)
         } else {
             Style::default().fg(Color::DarkGray)
@@ -106,8 +111,8 @@ impl RightPanel {
             .constraints([Constraint::Percentage(35), Constraint::Percentage(65)])
             .split(area);
 
-        self.render_file_list(frame, chunks[0], border_style, focused);
-        self.render_diff(frame, chunks[1], git_state, border_style);
+        self.render_file_list(frame, chunks[0], list_border_style, list_focused);
+        self.render_diff(frame, chunks[1], git_state, diff_border_style);
     }
 
     fn render_file_list(&mut self, frame: &mut Frame, area: Rect, border_style: Style, focused: bool) {
