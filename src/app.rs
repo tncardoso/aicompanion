@@ -69,6 +69,10 @@ impl App {
                         self.ui.toggle_focus();
                         return true;
                     }
+                    KeyCode::BackTab => {
+                        self.ui.toggle_focus_back();
+                        return true;
+                    }
                     KeyCode::Char('r') => {
                         self.reload();
                         return true;

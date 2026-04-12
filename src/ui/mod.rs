@@ -53,6 +53,15 @@ impl Ui {
         };
     }
 
+    pub fn toggle_focus_back(&mut self) {
+        self.focus = match self.focus {
+            Focus::Left => Focus::RightDiff,
+            Focus::Metrics => Focus::Left,
+            Focus::Right => Focus::Metrics,
+            Focus::RightDiff => Focus::Right,
+        };
+    }
+
     pub fn update(&mut self, git_state: &GitState) {
         self.right.update_entries(git_state);
     }

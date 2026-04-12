@@ -52,16 +52,21 @@ The tool shows changes between the working tree and `HEAD` — staged, unstaged,
 
 ## Keys
 
-`Tab` cycles focus: **LEFT** → **FILES** → **DIFF** → **LEFT**
+`Tab` / `Shift+Tab` cycle focus forward and backward: **LEFT** → **METRICS** → **FILES** → **DIFF** → **LEFT**
 
-| Key | FILES focus | DIFF focus | LEFT focus |
-|-----|-------------|------------|------------|
-| `j` / `↓` | Next file | Scroll down 1 line | Scroll call graph |
-| `k` / `↑` | Prev file | Scroll up 1 line | Scroll call graph |
-| `d` | — | Scroll down 10 lines | Scroll metrics down |
-| `u` | — | Scroll up 10 lines | Scroll metrics up |
-| `r` | Reload | Reload | Reload |
-| `q` | Quit | Quit | Quit |
+| Key | LEFT focus | METRICS focus | FILES focus | DIFF focus |
+|-----|------------|---------------|-------------|------------|
+| `j` / `↓` | Scroll call graph down | Scroll metrics down | Next file | Scroll down 1 line |
+| `k` / `↑` | Scroll call graph up | Scroll metrics up | Prev file | Scroll up 1 line |
+| `d` | — | Scroll metrics down 10 | — | Scroll down 10 lines |
+| `u` | — | Scroll metrics up 10 | — | Scroll up 10 lines |
+| `h` / `←` | — | — | — | Scroll left |
+| `l` / `→` | — | — | — | Scroll right |
+| `>` / `<` | Cycle sort | Cycle sort | Cycle sort | Cycle sort |
+| `r` | Reload | Reload | Reload | Reload |
+| `q` | Quit | Quit | Quit | Quit |
+
+`>` and `<` are global — they cycle the metrics sort order regardless of which pane is focused. Sort orders: Cyclomatic Value → Cyclomatic Delta → Cognitive Value → Cognitive Delta → Coupling Value → Coupling Delta.
 
 ## Complexity metrics
 
