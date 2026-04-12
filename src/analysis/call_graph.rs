@@ -22,28 +22,36 @@ impl FnId {
     }
 }
 
-/// Directed call graph restricted to the set of changed functions.
+/// Directed call graph restricted to functions connected to the changed set.
 #[derive(Debug, Default, Clone)]
 pub struct CallGraph {
-    /// Adjacency list: caller → callees within the changed set.
+    /// Adjacency list: caller → callees.
     pub edges: HashMap<FnId, Vec<FnId>>,
     /// All nodes (topologically sorted for display).
     pub nodes: Vec<FnId>,
 }
 
-/// Build a call graph from a set of `(file_path, source_code)` pairs.
-pub fn build(files: &[(String, String)]) -> CallGraph {
-    // Step 1: collect (FnId, file_index, byte_range) for all functions in changed files.
-    // byte_range lets us later identify which function body to search for calls.
+/// Build a call graph from all source files in the repo.
+///
+/// `all_files` — every source file reachable from the repo root.
+/// `changed_paths` — relative paths of files that were modified or added.
+///
+/// Edges are only included when at least one end belongs to the changed set,
+/// so the graph stays focused on what actually changed while showing the full
+/// context of callers and callees from anywhere in the codebase.
+pub fn build(all_files: &[(String, String)], changed_paths: &HashSet<String>) -> CallGraph {
     struct FnEntry {
         id: FnId,
         start_byte: usize,
         end_byte: usize,
+        is_changed: bool,
     }
 
+    // ── Pass 1: collect all function definitions ─────────────────────────
     let mut all_entries: Vec<FnEntry> = Vec::new();
 
-    for (path, source) in files {
+    for (path, source) in all_files {
+        let is_changed = changed_paths.contains(path.as_str());
         let ext = std::path::Path::new(path)
             .extension()
             .and_then(|e| e.to_str())
@@ -77,12 +85,12 @@ pub fn build(files: &[(String, String)]) -> CallGraph {
             for cap in m.captures {
                 if cap.index == name_idx {
                     if let Ok(name) = cap.node.utf8_text(source_bytes) {
-                        // The function body is the parent of the name node.
                         let fn_node = cap.node.parent().unwrap_or(tree.root_node());
                         all_entries.push(FnEntry {
                             id: FnId { file: path.clone(), name: name.to_string() },
                             start_byte: fn_node.start_byte(),
                             end_byte: fn_node.end_byte(),
+                            is_changed,
                         });
                     }
                 }
@@ -90,15 +98,19 @@ pub fn build(files: &[(String, String)]) -> CallGraph {
         }
     }
 
-    // Build a set of all function names for fast lookup.
+    // Build lookup structures.
     let all_fn_ids: HashSet<FnId> = all_entries.iter().map(|e| e.id.clone()).collect();
+    let changed_fn_ids: HashSet<FnId> = all_entries.iter()
+        .filter(|e| e.is_changed)
+        .map(|e| e.id.clone())
+        .collect();
 
-    // Step 2: for each function, find which other changed functions it calls.
+    // ── Pass 2: scan function bodies for calls ───────────────────────────
     let mut edges: HashMap<FnId, Vec<FnId>> = HashMap::new();
 
     for entry in &all_entries {
         let path = &entry.id.file;
-        let source = match files.iter().find(|(p, _)| p == path) {
+        let source = match all_files.iter().find(|(p, _)| p == path) {
             Some((_, s)) => s,
             None => continue,
         };
@@ -121,7 +133,6 @@ pub fn build(files: &[(String, String)]) -> CallGraph {
         let callee_idx = call_q.capture_index_for_name("callee").unwrap_or(0);
         let source_bytes = source.as_bytes();
 
-        // Parse the file and locate the function node by byte range.
         let mut parser = Parser::new();
         if parser.set_language(&language).is_err() {
             continue;
@@ -130,47 +141,58 @@ pub fn build(files: &[(String, String)]) -> CallGraph {
             Some(t) => t,
             None => continue,
         };
-
-        // Find the node at the function's byte range.
-        let fn_node = tree.root_node().descendant_for_byte_range(entry.start_byte, entry.end_byte);
-        let fn_node = match fn_node {
+        let fn_node = match tree.root_node().descendant_for_byte_range(entry.start_byte, entry.end_byte) {
             Some(n) => n,
             None => continue,
         };
 
         let mut call_cursor = QueryCursor::new();
         let mut call_matches = call_cursor.matches(&call_q, fn_node, source_bytes);
-        let mut targets: Vec<FnId> = Vec::new();
 
         while let Some(cm) = call_matches.next() {
             for cap in cm.captures {
                 if cap.index == callee_idx {
                     if let Ok(callee_name) = cap.node.utf8_text(source_bytes) {
-                        let callee = all_fn_ids.iter().find(|f| {
-                            f.name == callee_name && f != &&entry.id
-                        });
-                        if let Some(c) = callee {
-                            if !targets.contains(c) {
-                                targets.push(c.clone());
+                        // Match callee by name against any known function
+                        // (prefer same-file match, then first across all files).
+                        let callee = find_callee(callee_name, &entry.id, &all_fn_ids);
+                        if let Some(callee) = callee {
+                            // Only keep edges where at least one end is changed.
+                            let relevant = entry.is_changed || changed_fn_ids.contains(&callee);
+                            if relevant {
+                                let list = edges.entry(entry.id.clone()).or_default();
+                                if !list.contains(&callee) {
+                                    list.push(callee);
+                                }
                             }
                         }
                     }
                 }
             }
         }
-
-        edges.entry(entry.id.clone()).or_default().extend(targets);
     }
 
-    // Collect all unique nodes.
-    let mut node_set: HashSet<FnId> = edges.keys().cloned().collect();
-    for targets in edges.values() {
-        node_set.extend(targets.iter().cloned());
+    // ── Nodes: all changed functions + anything connected to them ─────────
+    let mut node_set: HashSet<FnId> = changed_fn_ids;
+    for (caller, callees) in &edges {
+        node_set.insert(caller.clone());
+        for c in callees {
+            node_set.insert(c.clone());
+        }
     }
-    node_set.extend(all_fn_ids.into_iter());
+
     let nodes = topological_sort(&node_set, &edges);
-
     CallGraph { edges, nodes }
+}
+
+/// Find a callee by name: prefer same file, then first match across all files.
+fn find_callee<'a>(name: &str, caller: &FnId, all_fns: &'a HashSet<FnId>) -> Option<FnId> {
+    // Same-file match first.
+    if let Some(f) = all_fns.iter().find(|f| f.name == name && f.file == caller.file && *f != caller) {
+        return Some(f.clone());
+    }
+    // Cross-file match (first found).
+    all_fns.iter().find(|f| f.name == name && *f != caller).cloned()
 }
 
 /// Topological sort (Kahn's algorithm) for display ordering.
@@ -206,7 +228,7 @@ fn topological_sort(nodes: &HashSet<FnId>, edges: &HashMap<FnId, Vec<FnId>>) -> 
             queue.extend(next);
         }
     }
-    // Any remaining nodes (cycles) — append sorted.
+    // Cycles: append remaining sorted.
     let mut remaining: Vec<FnId> = nodes.iter()
         .filter(|n| !result.contains(n))
         .cloned()
