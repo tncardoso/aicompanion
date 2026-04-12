@@ -1,0 +1,31 @@
+[package]
+name = "aicompanion"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+ratatui = "0.29"
+crossterm = { version = "0.28", features = ["event-stream"] }
+
+# Tree-sitter parsing
+tree-sitter = "0.24"
+tree-sitter-rust = "0.23"
+tree-sitter-python = "0.23"
+tree-sitter-javascript = "0.23"
+tree-sitter-typescript = "0.23"
+tree-sitter-go = "0.23"
+tree-sitter-c = "0.23"
+tree-sitter-cpp = "0.23"
+
+# FS watching for live reload
+notify = "6"
+
+# Config file
+serde = { version = "1", features = ["derive"] }
+toml = "0.8"
+
+# Error handling
+anyhow = "1"
+
+# Required for iterating tree-sitter QueryMatches
+streaming-iterator = "0.1"
