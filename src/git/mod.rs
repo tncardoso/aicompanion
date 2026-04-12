@@ -50,6 +50,24 @@ pub fn collect(repo_root: &Path, start_dir: &Path) -> Result<GitState> {
     })
 }
 
+/// Return the contents of `rel_path` as recorded in HEAD, or `None` for new/untracked files.
+pub fn file_at_head(repo_root: &Path, rel_path: &str) -> Option<String> {
+    let output = Command::new("git")
+        .args([
+            "-C",
+            &repo_root.to_string_lossy(),
+            "show",
+            &format!("HEAD:{rel_path}"),
+        ])
+        .output()
+        .ok()?;
+    if output.status.success() {
+        String::from_utf8(output.stdout).ok()
+    } else {
+        None
+    }
+}
+
 fn collect_diffs(repo_root: &Path, start_dir: &Path) -> Result<Vec<FileDiff>> {
     let mut args = vec![
         "-C".to_string(),

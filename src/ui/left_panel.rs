@@ -7,6 +7,7 @@ use ratatui::{
 };
 
 use crate::analysis::Analysis;
+use crate::analysis::metrics::FunctionMetricsDelta;
 use crate::config::Thresholds;
 
 use super::graph;
@@ -90,7 +91,7 @@ impl LeftPanel {
 
         let header = Line::from(vec![
             Span::styled(
-                format!("{:<22} {:<20} {:>5} {:>5} {:>5}  ",
+                format!("{:<22} {:<20} {:>10} {:>10} {:>10}  ",
                     "File", "Function", "Cycl", "Cogn", "Cpl"),
                 Style::default().fg(Color::White).add_modifier(Modifier::BOLD | Modifier::UNDERLINED),
             ),
@@ -111,42 +112,7 @@ impl LeftPanel {
         }
 
         for m in metrics {
-            let warn = crate::analysis::has_warning(m, thresholds);
-            let row_style = if warn {
-                Style::default().fg(Color::Yellow)
-            } else {
-                Style::default().fg(Color::Gray)
-            };
-
-            let file_col = truncate_col(&m.file, 22);
-            let fn_col = truncate_col(&m.name, 20);
-
-            let cycl_style = if crate::analysis::is_warning(m.cyclomatic, thresholds.cyclomatic) {
-                Style::default().fg(Color::Red).add_modifier(Modifier::BOLD)
-            } else {
-                row_style
-            };
-            let cogn_style = if crate::analysis::is_warning(m.cognitive, thresholds.cognitive) {
-                Style::default().fg(Color::Red).add_modifier(Modifier::BOLD)
-            } else {
-                row_style
-            };
-            let cpl_style = if crate::analysis::is_warning(m.coupling, thresholds.coupling) {
-                Style::default().fg(Color::Red).add_modifier(Modifier::BOLD)
-            } else {
-                row_style
-            };
-
-            let warn_indicator = if warn { " ⚠" } else { "  " };
-
-            lines.push(Line::from(vec![
-                Span::styled(format!(" {:<22}", file_col), row_style),
-                Span::styled(format!("{:<20}", fn_col), row_style),
-                Span::styled(format!("{:>5}", m.cyclomatic), cycl_style),
-                Span::styled(format!("{:>5}", m.cognitive), cogn_style),
-                Span::styled(format!("{:>5}", m.coupling), cpl_style),
-                Span::styled(warn_indicator.to_string(), Style::default().fg(Color::Yellow)),
-            ]));
+            lines.push(self.metric_row(m, thresholds));
         }
 
         let total = lines.len();
@@ -166,12 +132,102 @@ impl LeftPanel {
 
         frame.render_widget(paragraph, area);
     }
+
+    fn metric_row<'a>(&self, m: &FunctionMetricsDelta, thresholds: &Thresholds) -> Line<'a> {
+        let warn = crate::analysis::has_warning(m, thresholds);
+        let row_style = if warn {
+            Style::default().fg(Color::Yellow)
+        } else {
+            Style::default().fg(Color::Gray)
+        };
+
+        let file_col = truncate_left(&m.file, 21);
+        let fn_col = truncate_col(&m.name, 20);
+
+        let cycl_val_style = if crate::analysis::is_warning(m.cyclomatic, thresholds.cyclomatic) {
+            Style::default().fg(Color::Red).add_modifier(Modifier::BOLD)
+        } else {
+            row_style
+        };
+        let cogn_val_style = if crate::analysis::is_warning(m.cognitive, thresholds.cognitive) {
+            Style::default().fg(Color::Red).add_modifier(Modifier::BOLD)
+        } else {
+            row_style
+        };
+        let cpl_val_style = if crate::analysis::is_warning(m.coupling, thresholds.coupling) {
+            Style::default().fg(Color::Red).add_modifier(Modifier::BOLD)
+        } else {
+            row_style
+        };
+
+        let warn_indicator = if warn { " ⚠" } else { "  " };
+
+        let mut spans: Vec<Span<'a>> = vec![
+            Span::styled(format!(" {:<22}", file_col), row_style),
+            Span::styled(format!("{:<20}", fn_col), row_style),
+        ];
+
+        metric_cell(&mut spans, m.cyclomatic, m.cyclomatic_delta, cycl_val_style, row_style);
+        metric_cell(&mut spans, m.cognitive, m.cognitive_delta, cogn_val_style, row_style);
+        metric_cell(&mut spans, m.coupling, m.coupling_delta, cpl_val_style, row_style);
+
+        spans.push(Span::styled(warn_indicator.to_string(), Style::default().fg(Color::Yellow)));
+
+        Line::from(spans)
+    }
 }
 
+/// Append spans for one metric cell (10 chars wide) with an optional delta.
+fn metric_cell<'a>(
+    spans: &mut Vec<Span<'a>>,
+    value: u32,
+    delta: Option<i64>,
+    val_style: Style,
+    neutral_style: Style,
+) {
+    const WIDTH: usize = 10;
+    match delta {
+        Some(d) => {
+            let val_str = format!("{}", value);
+            let delta_str = format!(" ({:+})", d);
+            let total = val_str.len() + delta_str.len();
+            let pad = WIDTH.saturating_sub(total);
+            let padded_val = format!("{}{}", " ".repeat(pad), val_str);
+
+            let delta_style = if d > 0 {
+                Style::default().fg(Color::Red)
+            } else if d < 0 {
+                Style::default().fg(Color::Green)
+            } else {
+                neutral_style
+            };
+
+            spans.push(Span::styled(padded_val, val_style));
+            spans.push(Span::styled(delta_str, delta_style));
+        }
+        None => {
+            spans.push(Span::styled(format!("{:>WIDTH$}", value), val_style));
+        }
+    }
+}
+
+/// Truncate from the right, keeping the start: `"longname…"`
 fn truncate_col(s: &str, max: usize) -> String {
-    if s.len() <= max {
+    let chars: Vec<char> = s.chars().collect();
+    if chars.len() <= max {
         s.to_string()
     } else {
-        format!("{}…", &s[..max.saturating_sub(1)])
+        format!("{}…", chars[..max.saturating_sub(1)].iter().collect::<String>())
+    }
+}
+
+/// Truncate from the left, keeping the suffix: `"…ng/file.rs"`
+fn truncate_left(s: &str, max: usize) -> String {
+    let chars: Vec<char> = s.chars().collect();
+    if chars.len() <= max {
+        s.to_string()
+    } else {
+        let keep = max.saturating_sub(1);
+        format!("…{}", chars[chars.len() - keep..].iter().collect::<String>())
     }
 }

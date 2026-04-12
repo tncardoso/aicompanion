@@ -13,6 +13,58 @@ pub struct FunctionMetrics {
     pub coupling: u32,
 }
 
+/// Metrics for a function with optional deltas vs. the HEAD (before) version.
+/// `*_delta` is `None` when the function is new (no baseline in HEAD).
+#[derive(Debug, Clone)]
+pub struct FunctionMetricsDelta {
+    pub file: String,
+    pub name: String,
+    pub cyclomatic: u32,
+    pub cognitive: u32,
+    pub coupling: u32,
+    pub cyclomatic_delta: Option<i64>,
+    pub cognitive_delta: Option<i64>,
+    pub coupling_delta: Option<i64>,
+}
+
+/// Join `after` metrics with `before` metrics (keyed on `(file, name)`) to produce deltas.
+pub fn compute_deltas(
+    before: &[FunctionMetrics],
+    after: &[FunctionMetrics],
+) -> Vec<FunctionMetricsDelta> {
+    // Build lookup: (file, name) → before metrics
+    let lookup: std::collections::HashMap<(&str, &str), &FunctionMetrics> = before
+        .iter()
+        .map(|m| ((m.file.as_str(), m.name.as_str()), m))
+        .collect();
+
+    after
+        .iter()
+        .map(|m| {
+            let (cyclomatic_delta, cognitive_delta, coupling_delta) =
+                if let Some(b) = lookup.get(&(m.file.as_str(), m.name.as_str())) {
+                    (
+                        Some(m.cyclomatic as i64 - b.cyclomatic as i64),
+                        Some(m.cognitive as i64 - b.cognitive as i64),
+                        Some(m.coupling as i64 - b.coupling as i64),
+                    )
+                } else {
+                    (None, None, None)
+                };
+            FunctionMetricsDelta {
+                file: m.file.clone(),
+                name: m.name.clone(),
+                cyclomatic: m.cyclomatic,
+                cognitive: m.cognitive,
+                coupling: m.coupling,
+                cyclomatic_delta,
+                cognitive_delta,
+                coupling_delta,
+            }
+        })
+        .collect()
+}
+
 /// Analyse all functions in `source` (a complete file) and return per-function metrics.
 pub fn analyse_file(file: &str, source: &str, ext: &str, language: &Language) -> Vec<FunctionMetrics> {
     let mut parser = Parser::new();

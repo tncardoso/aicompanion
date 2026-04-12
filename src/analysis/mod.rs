@@ -8,30 +8,46 @@ use std::path::Path;
 use crate::config::Thresholds;
 use crate::git::GitState;
 use call_graph::CallGraph;
-use metrics::FunctionMetrics;
+use metrics::{FunctionMetrics, FunctionMetricsDelta};
 
 /// The full analysis result for the current git state.
 #[derive(Debug, Default, Clone)]
 pub struct Analysis {
-    pub metrics: Vec<FunctionMetrics>,
+    pub metrics: Vec<FunctionMetricsDelta>,
     pub call_graph: CallGraph,
 }
 
 /// Run analysis on all changed files in `state`.
 pub fn run(state: &GitState) -> Result<Analysis> {
-    // Collect (path, source) for all changed files that exist on disk.
+    // Collect (path, current_source, head_source_or_none) for all changed files on disk.
     let mut files: Vec<(String, String)> = Vec::new();
+    let mut before_metrics: Vec<FunctionMetrics> = Vec::new();
 
     for file_diff in &state.diffs {
         let full_path = state.repo_root.join(&file_diff.path);
         if full_path.exists() {
             if let Ok(source) = std::fs::read_to_string(&full_path) {
+                // Compute "before" metrics from HEAD version, if available.
+                if let Some(head_source) =
+                    crate::git::file_at_head(&state.repo_root, &file_diff.path)
+                {
+                    let ext = Path::new(&file_diff.path)
+                        .extension()
+                        .and_then(|e| e.to_str())
+                        .unwrap_or("");
+                    if let Some(language) = parser::language_for_extension(ext) {
+                        let head_metrics =
+                            metrics::analyse_file(&file_diff.path, &head_source, ext, &language);
+                        before_metrics.extend(head_metrics);
+                    }
+                }
                 files.push((file_diff.path.clone(), source));
             }
         }
     }
 
     // Also analyze untracked (new) source files so their metrics are visible.
+    // These have no HEAD baseline — deltas will be None.
     let diffed_paths: std::collections::HashSet<&str> =
         state.diffs.iter().map(|d| d.path.as_str()).collect();
     for untracked in &state.untracked {
@@ -53,7 +69,7 @@ pub fn run(state: &GitState) -> Result<Analysis> {
         }
     }
 
-    let mut all_metrics = Vec::new();
+    let mut after_metrics: Vec<FunctionMetrics> = Vec::new();
     for (path, source) in &files {
         let ext = Path::new(path)
             .extension()
@@ -61,10 +77,11 @@ pub fn run(state: &GitState) -> Result<Analysis> {
             .unwrap_or("");
         if let Some(language) = parser::language_for_extension(ext) {
             let file_metrics = metrics::analyse_file(path, source, ext, &language);
-            all_metrics.extend(file_metrics);
+            after_metrics.extend(file_metrics);
         }
     }
 
+    let all_metrics = metrics::compute_deltas(&before_metrics, &after_metrics);
     let call_graph = call_graph::build(&files);
 
     Ok(Analysis {
@@ -79,7 +96,7 @@ pub fn is_warning(value: u32, threshold: u32) -> bool {
 }
 
 /// Check whether any metric in `m` exceeds its threshold.
-pub fn has_warning(m: &FunctionMetrics, thresholds: &Thresholds) -> bool {
+pub fn has_warning(m: &FunctionMetricsDelta, thresholds: &Thresholds) -> bool {
     is_warning(m.cyclomatic, thresholds.cyclomatic)
         || is_warning(m.cognitive, thresholds.cognitive)
         || is_warning(m.coupling, thresholds.coupling)
