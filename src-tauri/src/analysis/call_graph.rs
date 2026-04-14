@@ -156,7 +156,7 @@ pub fn build(all_files: &[(String, String)], changed_paths: &HashSet<String>) ->
                     if let Ok(callee_name) = cap.node.utf8_text(source_bytes) {
                         // Match callee by name against any known function
                         // (prefer same-file match, then first across all files).
-                        let callee = find_callee(callee_name, &entry.id, &all_fn_ids);
+                        let callee = find_callee(callee_name, &entry.id, &all_fn_ids, &changed_fn_ids);
                         if let Some(callee) = callee {
                             // Only keep edges where at least one end is changed.
                             let relevant = entry.is_changed || changed_fn_ids.contains(&callee);
@@ -188,13 +188,22 @@ pub fn build(all_files: &[(String, String)], changed_paths: &HashSet<String>) ->
     CallGraph { edges: edges_vec, nodes }
 }
 
-/// Find a callee by name: prefer same file, then first match across all files.
-fn find_callee<'a>(name: &str, caller: &FnId, all_fns: &'a HashSet<FnId>) -> Option<FnId> {
+/// Find a callee by name: prefer same file, then changed functions, then any match.
+fn find_callee<'a>(
+    name: &str,
+    caller: &FnId,
+    all_fns: &'a HashSet<FnId>,
+    changed_fns: &'a HashSet<FnId>,
+) -> Option<FnId> {
     // Same-file match first.
     if let Some(f) = all_fns.iter().find(|f| f.name == name && f.file == caller.file && *f != caller) {
         return Some(f.clone());
     }
-    // Cross-file match (first found).
+    // Prefer changed functions cross-file (avoids missing edges due to name collision).
+    if let Some(f) = changed_fns.iter().find(|f| f.name == name && *f != caller) {
+        return Some(f.clone());
+    }
+    // Cross-file fallback (first found).
     all_fns.iter().find(|f| f.name == name && *f != caller).cloned()
 }
 
