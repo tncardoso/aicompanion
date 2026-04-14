@@ -31,6 +31,8 @@ pub struct FileDiff {
     /// Number of lines removed.
     pub removed: usize,
     pub hunks: Vec<Hunk>,
+    /// Full current content of the file (working tree).
+    pub content: String,
 }
 
 /// Parse the output of `git diff` (unified format) into structured FileDiffs.
@@ -58,6 +60,7 @@ pub fn parse_unified(output: &str) -> Vec<FileDiff> {
                 added: 0,
                 removed: 0,
                 hunks: Vec::new(),
+                content: String::new(),
             });
         } else if line.starts_with("+++ ") || line.starts_with("--- ") || line.starts_with("index ") || line.starts_with("new file") || line.starts_with("deleted file") || line.starts_with("Binary") {
             // Header lines — skip.

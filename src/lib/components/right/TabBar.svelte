@@ -59,12 +59,6 @@
       </button>
     </div>
   {/each}
-  <div class="tab-spacer">
-    <button class="ai-explain-btn">
-      <span class="material-symbols-outlined btn-icon">auto_fix_high</span>
-      <span class="btn-label">AI Explain</span>
-    </button>
-  </div>
 </div>
 
 <style>

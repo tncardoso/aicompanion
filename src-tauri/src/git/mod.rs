@@ -11,6 +11,7 @@ use diff::FileDiff;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct UntrackedFile {
     pub path: String,
+    pub content: String,
 }
 
 /// Combined snapshot of git state.
@@ -87,16 +88,21 @@ fn collect_diffs(repo_root: &Path, start_dir: &Path) -> Result<Vec<FileDiff>> {
         .context("failed to run git diff")?;
 
     let text = String::from_utf8_lossy(&output.stdout);
-    Ok(diff::parse_unified(&text))
+    let mut diffs = diff::parse_unified(&text);
+    for file_diff in &mut diffs {
+        file_diff.content = std::fs::read_to_string(repo_root.join(&file_diff.path))
+            .unwrap_or_default();
+    }
+    Ok(diffs)
 }
 
 fn collect_untracked(repo_root: &Path, start_dir: &Path) -> Result<Vec<UntrackedFile>> {
     let mut args = vec![
         "-C".to_string(),
         repo_root.to_string_lossy().into_owned(),
-        "status".to_string(),
-        "--short".to_string(),
-        "--porcelain".to_string(),
+        "ls-files".to_string(),
+        "--others".to_string(),
+        "--exclude-standard".to_string(),
     ];
     if start_dir != repo_root {
         args.push("--".to_string());
@@ -106,15 +112,14 @@ fn collect_untracked(repo_root: &Path, start_dir: &Path) -> Result<Vec<Untracked
     let output = Command::new("git")
         .args(&args)
         .output()
-        .context("failed to run git status")?;
+        .context("failed to run git ls-files")?;
 
     let text = String::from_utf8_lossy(&output.stdout);
-    let mut untracked = Vec::new();
-    for line in text.lines() {
-        if line.starts_with("??") {
-            let path = line[3..].trim().to_string();
-            untracked.push(UntrackedFile { path });
-        }
-    }
-    Ok(untracked)
+    Ok(text
+        .lines()
+        .map(|p| UntrackedFile {
+            path: p.to_string(),
+            content: std::fs::read_to_string(repo_root.join(p)).unwrap_or_default(),
+        })
+        .collect())
 }

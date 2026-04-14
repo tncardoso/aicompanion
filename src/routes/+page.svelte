@@ -9,9 +9,14 @@
       const gitState = await getGitState(repoPath);
       appState.gitState = gitState;
 
-      if (gitState.diffs.length > 0 && appState.openTabs.length === 0) {
-        appState.openTabs = gitState.diffs.map((d) => d.path);
-        appState.activeTab = gitState.diffs[0].path;
+      if (appState.openTabs.length === 0) {
+        const diffPaths = gitState.diffs.map((d) => d.path);
+        const untrackedPaths = gitState.untracked.map((u) => u.path);
+        const all = [...diffPaths, ...untrackedPaths];
+        if (all.length > 0) {
+          appState.openTabs = all;
+          appState.activeTab = all[0];
+        }
       }
     } catch (e) {
       console.error('get_git_state failed:', e);

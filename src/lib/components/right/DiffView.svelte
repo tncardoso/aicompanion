@@ -11,39 +11,71 @@
 
   function buildLines(diff: FileDiff): LineEntry[] {
     const result: LineEntry[] = [];
-    let leftLine = 1;
-    let rightLine = 1;
+    const fileLines = diff.content.split('\n');
+    if (fileLines[fileLines.length - 1] === '') fileLines.pop();
+
+    let oldLine = 1;
+    let newLine = 1;
 
     for (const hunk of diff.hunks) {
-      // Hunk header separator
-      result.push({ leftNum: null, rightNum: null, content: hunk.header, kind: 'hunk' });
-
-      // Parse hunk header: @@ -a,b +c,d @@
       const match = hunk.header.match(/@@ -(\d+)(?:,\d+)? \+(\d+)(?:,\d+)? @@/);
-      if (match) {
-        leftLine = parseInt(match[1]);
-        rightLine = parseInt(match[2]);
+      if (!match) continue;
+      const hunkNewStart = parseInt(match[2]);
+
+      // Unchanged lines before this hunk
+      while (newLine < hunkNewStart) {
+        result.push({ leftNum: oldLine++, rightNum: newLine++, content: fileLines[newLine - 2] ?? '', kind: 'context' });
       }
 
+      // Hunk lines
       for (const line of hunk.lines) {
-        if (line.kind === 'context') {
-          result.push({ leftNum: leftLine++, rightNum: rightLine++, content: line.content, kind: 'context' });
-        } else if (line.kind === 'removed') {
-          result.push({ leftNum: leftLine++, rightNum: null, content: line.content, kind: 'removed' });
+        if (line.kind === 'removed') {
+          result.push({ leftNum: oldLine++, rightNum: null, content: line.content, kind: 'removed' });
+        } else if (line.kind === 'added') {
+          result.push({ leftNum: null, rightNum: newLine++, content: line.content, kind: 'added' });
         } else {
-          result.push({ leftNum: null, rightNum: rightLine++, content: line.content, kind: 'added' });
+          result.push({ leftNum: oldLine++, rightNum: newLine++, content: line.content, kind: 'context' });
         }
       }
     }
 
+    // Remaining unchanged lines after last hunk
+    while (newLine <= fileLines.length) {
+      result.push({ leftNum: oldLine++, rightNum: newLine, content: fileLines[newLine - 1] ?? '', kind: 'context' });
+      newLine++;
+    }
+
     return result;
+  }
+
+  function buildUntrackedLines(content: string): LineEntry[] {
+    const fileLines = content.split('\n');
+    if (fileLines[fileLines.length - 1] === '') fileLines.pop();
+    return fileLines.map((line, i) => ({
+      leftNum: null,
+      rightNum: i + 1,
+      content: line,
+      kind: 'added' as const,
+    }));
   }
 
   const activeDiff = $derived(
     appState.gitState?.diffs.find((d) => d.path === appState.activeTab) ?? null
   );
 
-  const lines = $derived(activeDiff ? buildLines(activeDiff) : []);
+  const activeUntracked = $derived(
+    appState.gitState?.untracked.find(u => u.path === appState.activeTab) ?? null
+  );
+
+  const isUntracked = $derived(activeUntracked != null);
+
+  const lines = $derived(
+    activeDiff
+      ? buildLines(activeDiff)
+      : activeUntracked
+        ? buildUntrackedLines(activeUntracked.content)
+        : []
+  );
 </script>
 
 <div class="diff-view">
@@ -52,7 +84,7 @@
       <span class="material-symbols-outlined">code_off</span>
       <p>Select a file to view its diff</p>
     </div>
-  {:else if !activeDiff}
+  {:else if !activeDiff && !isUntracked}
     <div class="no-file">
       <span class="material-symbols-outlined">check_circle</span>
       <p>No changes in this file</p>
@@ -105,25 +137,6 @@
           </div>
         {/each}
 
-        <!-- AI Suggestion note (matching design.html) -->
-        {#if lines.length > 0}
-          <div class="ai-suggestion">
-            <div class="ai-label">AI SUGGESTION</div>
-            <div class="ai-body">
-              <span class="material-symbols-outlined ai-icon" style="font-variation-settings:'FILL' 1,'wght' 400,'GRAD' 0,'opsz' 24">auto_awesome</span>
-              <div class="ai-content">
-                <p class="ai-text">
-                  Consider reviewing these changes for potential edge cases. The modified functions
-                  may benefit from additional error handling or unit test coverage.
-                </p>
-                <div class="ai-actions">
-                  <button class="ai-btn accept">Accept Change</button>
-                  <button class="ai-btn ignore">Ignore</button>
-                </div>
-              </div>
-            </div>
-          </div>
-        {/if}
       </div>
     </div>
   {/if}

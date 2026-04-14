@@ -102,44 +102,39 @@ pub fn run(state: &GitState) -> Result<Analysis> {
     })
 }
 
-/// Walk `repo_root` and return `(relative_path, source)` for every supported
-/// source file, skipping common non-source directories.
+/// Use `git ls-files` to list every tracked file in `repo_root`, returning
+/// `(relative_path, source)` for each supported source file.
+/// This respects .gitignore automatically.
 fn collect_all_source_files(repo_root: &Path) -> Vec<(String, String)> {
-    const SKIP: &[&str] = &[
-        ".git", "target", "node_modules", ".cargo",
-        "dist", "build", "__pycache__", ".tox", "venv", ".venv",
-    ];
-    let mut files = Vec::new();
-    collect_dir(repo_root, repo_root, SKIP, &mut files);
-    files
-}
-
-fn collect_dir(
-    root: &Path,
-    dir: &Path,
-    skip: &[&str],
-    out: &mut Vec<(String, String)>,
-) {
-    let entries = match std::fs::read_dir(dir) {
-        Ok(e) => e,
-        Err(_) => return,
+    let output = match std::process::Command::new("git")
+        .args(["ls-files", "--cached", "--others", "--exclude-standard"])
+        .current_dir(repo_root)
+        .output()
+    {
+        Ok(o) => o,
+        Err(_) => return Vec::new(),
     };
-    for entry in entries.flatten() {
-        let path = entry.path();
-        if path.is_dir() {
-            let name = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
-            if skip.contains(&name) { continue; }
-            collect_dir(root, &path, skip, out);
-        } else if path.is_file() {
-            let ext = path.extension().and_then(|e| e.to_str()).unwrap_or("");
-            if parser::language_for_extension(ext).is_none() { continue; }
-            if let Ok(source) = std::fs::read_to_string(&path) {
-                if let Ok(rel) = path.strip_prefix(root) {
-                    out.push((rel.to_string_lossy().replace('\\', "/"), source));
-                }
-            }
+
+    let stdout = match std::str::from_utf8(&output.stdout) {
+        Ok(s) => s,
+        Err(_) => return Vec::new(),
+    };
+
+    let mut files = Vec::new();
+    for rel_path in stdout.lines() {
+        let ext = Path::new(rel_path)
+            .extension()
+            .and_then(|e| e.to_str())
+            .unwrap_or("");
+        if parser::language_for_extension(ext).is_none() {
+            continue;
+        }
+        let full_path = repo_root.join(rel_path);
+        if let Ok(source) = std::fs::read_to_string(&full_path) {
+            files.push((rel_path.to_string(), source));
         }
     }
+    files
 }
 
 /// Check whether a metric value exceeds the configured threshold.

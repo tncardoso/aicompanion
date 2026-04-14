@@ -15,10 +15,12 @@ export interface FileDiff {
   added: number;
   removed: number;
   hunks: Hunk[];
+  content: string;
 }
 
 export interface UntrackedFile {
   path: string;
+  content: string;
 }
 
 export interface GitState {
