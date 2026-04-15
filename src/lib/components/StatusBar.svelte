@@ -51,8 +51,7 @@
 <style>
   .status-bar {
     height: 24px;
-    background: #000000;
-    border-top: 1px solid rgba(66, 72, 84, 0.1);
+    background: var(--color-surface-container-high);
     display: flex;
     justify-content: space-between;
     align-items: center;

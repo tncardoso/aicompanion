@@ -40,8 +40,10 @@
     width: 100%;
     padding: 0 1rem;
     height: 48px;
-    background: #0c0e12;
-    border-bottom: 1px solid rgba(66, 72, 84, 0.15);
+    background: rgba(249, 249, 249, 0.75);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    box-shadow: 0 8px 32px rgba(26, 28, 28, 0.06), 0 2px 8px rgba(0, 97, 164, 0.02);
     flex-shrink: 0;
     z-index: 50;
   }
@@ -53,10 +55,11 @@
   }
 
   .brand {
+    font-family: var(--font-display);
     font-size: 18px;
-    font-weight: 900;
+    font-weight: 700;
     color: var(--color-primary);
-    letter-spacing: -0.05em;
+    letter-spacing: -0.02em;
   }
 
   .menu-nav {

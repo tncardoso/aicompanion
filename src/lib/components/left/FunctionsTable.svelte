@@ -102,7 +102,7 @@
     flex-direction: column;
     height: 40%;
     padding: 1rem;
-    border-top: 1px solid rgba(66, 72, 84, 0.15);
+    background: var(--color-surface-container);
     overflow: hidden;
   }
 
@@ -125,12 +125,12 @@
 
   .sort-btn {
     background: none;
-    border: 1px solid var(--color-outline-variant);
+    border: 1px solid rgba(193, 199, 206, 0.4);
     color: var(--color-secondary);
     font-size: 10px;
     font-family: var(--font-body);
     padding: 2px 8px;
-    border-radius: 2px;
+    border-radius: 0.25rem;
     cursor: pointer;
     transition: all 150ms;
   }
@@ -153,7 +153,7 @@
     align-items: center;
     justify-content: space-between;
     padding: 6px 8px;
-    border-radius: 2px;
+    border-radius: 0.25rem;
     cursor: pointer;
     transition: background 150ms;
     gap: 8px;
@@ -161,6 +161,7 @@
 
   .fn-row:hover {
     background: var(--color-surface-container-high);
+    border-radius: 0.25rem;
   }
 
   .fn-row.warn .fn-name {
@@ -183,7 +184,7 @@
   }
 
   .dot-modified { background: var(--color-primary); }
-  .dot-added { background: var(--color-tertiary); }
+  .dot-added { background: var(--color-secondary); }
 
   .fn-name {
     font-family: var(--font-mono);
@@ -231,7 +232,7 @@
   .badge {
     font-size: 10px;
     padding: 1px 8px;
-    border-radius: 2px;
+    border-radius: 0.25rem;
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: -0.02em;
@@ -239,13 +240,13 @@
   }
 
   .badge-modified {
-    background: rgba(47, 58, 163, 0.2);
-    color: var(--color-primary-dim);
+    background: rgba(0, 97, 164, 0.12);
+    color: var(--color-primary);
   }
 
   .badge-added {
-    background: rgba(188, 128, 248, 0.2);
-    color: var(--color-tertiary-dim);
+    background: rgba(152, 70, 40, 0.12);
+    color: var(--color-secondary);
   }
 
   .empty-state {

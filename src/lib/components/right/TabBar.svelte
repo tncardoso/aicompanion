@@ -65,8 +65,7 @@
   .tab-bar {
     display: flex;
     flex-wrap: wrap;
-    background: var(--color-surface-container-low);
-    border-bottom: 1px solid rgba(66, 72, 84, 0.1);
+    background: var(--color-surface-container);
     flex-shrink: 0;
   }
 
@@ -74,13 +73,12 @@
     display: flex;
     align-items: center;
     padding: 0 1rem;
-    border-right: 1px solid rgba(66, 72, 84, 0.1);
     min-width: 140px;
     height: 40px;
     position: relative;
     cursor: pointer;
     opacity: 0.6;
-    transition: opacity 200ms;
+    transition: opacity 200ms, background 200ms;
     gap: 6px;
     flex-shrink: 0;
   }
@@ -90,7 +88,7 @@
   }
 
   .tab.active {
-    background: var(--color-surface);
+    background: var(--color-surface-bright);
     opacity: 1;
   }
 

@@ -111,17 +111,17 @@
       <svg class="bg-svg" width="100%" height="100%">
         <defs>
           <linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" style="stop-color:#bdc2ff;stop-opacity:1" />
-            <stop offset="100%" style="stop-color:#c890ff;stop-opacity:1" />
+            <stop offset="0%" style="stop-color:#0061a4;stop-opacity:1" />
+            <stop offset="100%" style="stop-color:#01658c;stop-opacity:1" />
           </linearGradient>
         </defs>
-        <line stroke="#424854" stroke-width="1" x1="20%" y1="20%" x2="50%" y2="50%" />
-        <line stroke="#424854" stroke-width="1" x1="50%" y1="50%" x2="80%" y2="30%" />
-        <line stroke="#424854" stroke-width="1" x1="50%" y1="50%" x2="40%" y2="80%" />
-        <circle cx="20%" cy="20%" r="4" fill="#bdc2ff" />
-        <circle cx="50%" cy="50%" r="6" fill="#c890ff" />
-        <circle cx="80%" cy="30%" r="4" fill="#bdc2ff" />
-        <circle cx="40%" cy="80%" r="4" fill="#bdc2ff" />
+        <line stroke="#c1c7ce" stroke-width="1" x1="20%" y1="20%" x2="50%" y2="50%" />
+        <line stroke="#c1c7ce" stroke-width="1" x1="50%" y1="50%" x2="80%" y2="30%" />
+        <line stroke="#c1c7ce" stroke-width="1" x1="50%" y1="50%" x2="40%" y2="80%" />
+        <circle cx="20%" cy="20%" r="4" fill="#0061a4" />
+        <circle cx="50%" cy="50%" r="6" fill="#01658c" />
+        <circle cx="80%" cy="30%" r="4" fill="#0061a4" />
+        <circle cx="40%" cy="80%" r="4" fill="#984628" />
       </svg>
       <div class="empty-state">
         <span class="material-symbols-outlined hub-icon" style="font-variation-settings:'FILL' 1,'wght' 400,'GRAD' 0,'opsz' 24">hub</span>
@@ -131,7 +131,7 @@
       </div>
     {:else}
       {#key layout}
-        <Svelvet TD theme="dark" editable={false}>
+        <Svelvet TD theme="light" editable={false}>
           {#each layout.nodes as node (fnKey(node))}
             {@const pos = layout.positions.get(fnKey(node))!}
             {@const isChanged = changedKeys.has(fnKey(node))}
@@ -198,7 +198,7 @@
   .graph-container {
     flex: 1;
     background: var(--color-surface-container-low);
-    border-radius: 2px;
+    border-radius: 0.5rem;
     position: relative;
     overflow: hidden;
     display: flex;
@@ -210,6 +210,8 @@
     width: 100%;
     height: 100%;
     background: transparent;
+    --default-edge-color: var(--color-outline);
+    --default-background-color: transparent;
   }
 
   .bg-svg {

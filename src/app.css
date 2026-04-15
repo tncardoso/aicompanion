@@ -1,48 +1,58 @@
 :root {
-  --color-background: #0c0e12;
-  --color-surface: #0c0e12;
-  --color-surface-dim: #0c0e12;
-  --color-surface-bright: #252c39;
-  --color-surface-container-lowest: #000000;
-  --color-surface-container-low: #111319;
-  --color-surface-container: #161a21;
-  --color-surface-container-high: #1b2029;
-  --color-surface-container-highest: #202631;
-  --color-surface-variant: #202631;
-  --color-on-surface: #e0e5f5;
-  --color-on-surface-variant: #a5abb9;
-  --color-on-background: #e0e5f5;
-  --color-outline: #6f7683;
-  --color-outline-variant: #424854;
-  --color-primary: #bdc2ff;
-  --color-primary-dim: #acb3ff;
-  --color-primary-fixed: #e0e0ff;
-  --color-primary-fixed-dim: #ced1ff;
-  --color-primary-container: #2f3aa3;
-  --color-on-primary: #28329c;
-  --color-on-primary-container: #c9cdff;
-  --color-on-primary-fixed: #27319b;
-  --color-inverse-primary: #4954bc;
-  --color-secondary: #909fb5;
-  --color-secondary-dim: #909fb5;
-  --color-secondary-container: #2e3c4f;
-  --color-on-secondary: #122133;
-  --color-on-secondary-container: #b2c0d8;
-  --color-tertiary: #c890ff;
-  --color-tertiary-dim: #be83fa;
-  --color-tertiary-fixed: #bc80f8;
-  --color-tertiary-container: #bc80f8;
-  --color-on-tertiary: #400072;
-  --color-on-tertiary-container: #2e0055;
-  --color-error: #ec7c8a;
-  --color-error-dim: #b95463;
-  --color-error-container: #7f2737;
-  --color-on-error: #490013;
-  --color-on-error-container: #ff97a3;
-  --color-inverse-surface: #f9f9ff;
-  --color-inverse-on-surface: #53555a;
-  --color-surface-tint: #bdc2ff;
+  /* Surfaces — light */
+  --color-background:                #f9f9f9;
+  --color-surface:                   #f9f9f9;
+  --color-surface-dim:               #e8ecf0;
+  --color-surface-bright:            #ffffff;
+  --color-surface-container-lowest:  #ffffff;
+  --color-surface-container-low:     #f0f4f8;
+  --color-surface-container:         #e8ecf1;
+  --color-surface-container-high:    #dde2e8;
+  --color-surface-container-highest: #d2d8e0;
+  --color-surface-variant:           #dde3ea;
+  --color-on-surface:                #1a1c1c;
+  --color-on-surface-variant:        #41484f;
+  --color-on-background:             #1a1c1c;
+  --color-outline:                   #71787f;
+  --color-outline-variant:           #c1c7ce;
+  --color-inverse-surface:           #2e3133;
+  --color-inverse-on-surface:        #eef1f5;
+  --color-surface-tint:              #0061a4;
 
+  /* Primary — #0061a4 "Digital Pulse" */
+  --color-primary:                   #0061a4;
+  --color-primary-dim:               #004f87;
+  --color-primary-fixed:             #d1e4ff;
+  --color-primary-fixed-dim:         #a6c8fa;
+  --color-primary-container:         #d1e4ff;
+  --color-on-primary:                #ffffff;
+  --color-on-primary-container:      #001d36;
+  --color-on-primary-fixed:          #001d36;
+  --color-inverse-primary:           #9ecaff;
+
+  /* Secondary — #984628 "Warm Skin" */
+  --color-secondary:                 #984628;
+  --color-secondary-dim:             #7d3920;
+  --color-secondary-container:       #ffdbc8;
+  --color-on-secondary:              #ffffff;
+  --color-on-secondary-container:    #331200;
+
+  /* Tertiary — #01658c "Deep Lake" */
+  --color-tertiary:                  #01658c;
+  --color-tertiary-dim:              #005072;
+  --color-tertiary-fixed:            #bee9ff;
+  --color-tertiary-container:        #bee9ff;
+  --color-on-tertiary:               #ffffff;
+  --color-on-tertiary-container:     #001f2a;
+
+  /* Error */
+  --color-error:                     #ba1a1a;
+  --color-error-dim:                 #9c1515;
+  --color-error-container:           #ffdad6;
+  --color-on-error:                  #ffffff;
+  --color-on-error-container:        #410002;
+
+  --font-display: 'Space Grotesk', sans-serif;
   --font-mono: 'JetBrains Mono', monospace;
   --font-body: 'Inter', sans-serif;
 }
@@ -78,7 +88,7 @@ body {
   height: 4px;
 }
 ::-webkit-scrollbar-track {
-  background: var(--color-background);
+  background: var(--color-surface-container-low);
 }
 ::-webkit-scrollbar-thumb {
   background: var(--color-outline-variant);

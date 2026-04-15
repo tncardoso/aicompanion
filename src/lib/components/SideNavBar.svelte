@@ -36,12 +36,11 @@
 <style>
   .side-nav {
     width: 64px;
-    background: #111319;
+    background: var(--color-surface-container-low);
     display: flex;
     flex-direction: column;
     align-items: center;
     padding: 1rem 0;
-    border-right: 1px solid rgba(66, 72, 84, 0.15);
     flex-shrink: 0;
     z-index: 50;
   }
@@ -76,13 +75,13 @@
 
   .nav-icon:hover {
     opacity: 1;
-    background: var(--color-surface-container-high);
+    background: var(--color-surface-container);
   }
 
   .nav-icon.active {
     opacity: 1;
     color: var(--color-primary);
-    background: var(--color-surface-container-high);
+    background: var(--color-surface-container);
     border-left: 2px solid var(--color-primary);
   }
 
