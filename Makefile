@@ -1,0 +1,2 @@
+dev:
+	WEBKIT_DISABLE_DMABUF_RENDERER=1 bun tauri dev

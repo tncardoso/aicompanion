@@ -1,0 +1,99 @@
+:root {
+  /* Surfaces — light */
+  --color-background:                #f9f9f9;
+  --color-surface:                   #f9f9f9;
+  --color-surface-dim:               #e8ecf0;
+  --color-surface-bright:            #ffffff;
+  --color-surface-container-lowest:  #ffffff;
+  --color-surface-container-low:     #f0f4f8;
+  --color-surface-container:         #e8ecf1;
+  --color-surface-container-high:    #dde2e8;
+  --color-surface-container-highest: #d2d8e0;
+  --color-surface-variant:           #dde3ea;
+  --color-on-surface:                #1a1c1c;
+  --color-on-surface-variant:        #41484f;
+  --color-on-background:             #1a1c1c;
+  --color-outline:                   #71787f;
+  --color-outline-variant:           #c1c7ce;
+  --color-inverse-surface:           #2e3133;
+  --color-inverse-on-surface:        #eef1f5;
+  --color-surface-tint:              #0061a4;
+
+  /* Primary — #0061a4 "Digital Pulse" */
+  --color-primary:                   #0061a4;
+  --color-primary-dim:               #004f87;
+  --color-primary-fixed:             #d1e4ff;
+  --color-primary-fixed-dim:         #a6c8fa;
+  --color-primary-container:         #d1e4ff;
+  --color-on-primary:                #ffffff;
+  --color-on-primary-container:      #001d36;
+  --color-on-primary-fixed:          #001d36;
+  --color-inverse-primary:           #9ecaff;
+
+  /* Secondary — #984628 "Warm Skin" */
+  --color-secondary:                 #984628;
+  --color-secondary-dim:             #7d3920;
+  --color-secondary-container:       #ffdbc8;
+  --color-on-secondary:              #ffffff;
+  --color-on-secondary-container:    #331200;
+
+  /* Tertiary — #01658c "Deep Lake" */
+  --color-tertiary:                  #01658c;
+  --color-tertiary-dim:              #005072;
+  --color-tertiary-fixed:            #bee9ff;
+  --color-tertiary-container:        #bee9ff;
+  --color-on-tertiary:               #ffffff;
+  --color-on-tertiary-container:     #001f2a;
+
+  /* Error */
+  --color-error:                     #ba1a1a;
+  --color-error-dim:                 #9c1515;
+  --color-error-container:           #ffdad6;
+  --color-on-error:                  #ffffff;
+  --color-on-error-container:        #410002;
+
+  --font-display: 'Space Grotesk', sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+  --font-body: 'Inter', sans-serif;
+}
+
+.material-symbols-outlined {
+  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body {
+  height: 100%;
+  overflow: hidden;
+}
+
+body {
+  font-family: var(--font-body);
+  background: var(--color-background);
+  color: var(--color-on-surface);
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+::-webkit-scrollbar-track {
+  background: var(--color-surface-container-low);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-outline-variant);
+  border-radius: 10px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-outline);
+}
