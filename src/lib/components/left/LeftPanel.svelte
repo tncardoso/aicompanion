@@ -16,5 +16,6 @@
     background: var(--color-surface-container-low);
     overflow: hidden;
     flex-shrink: 0;
+    min-height: 0;
   }
 </style>

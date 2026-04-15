@@ -124,7 +124,6 @@
 <div class="graph-section">
   <div class="section-header">
     <h3 class="section-title">Call Graph</h3>
-    <span class="material-symbols-outlined refresh-icon">refresh</span>
   </div>
   <div class="graph-container">
     {#if !layout}
@@ -185,7 +184,8 @@
   .graph-section {
     display: flex;
     flex-direction: column;
-    height: 60%;
+    flex: 6;
+    min-height: 0;
     padding: 1rem;
     overflow: hidden;
   }

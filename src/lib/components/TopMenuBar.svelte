@@ -20,16 +20,11 @@
       {/each}
     </nav>
   </div>
-  <!--
   <div class="right">
     <div class="icon-group">
-      <span class="material-symbols-outlined icon">account_tree</span>
-      <span class="material-symbols-outlined icon">terminal</span>
-      <span class="material-symbols-outlined icon filled">psychology</span>
+      <span class="material-symbols-outlined icon">refresh</span>
     </div>
-    <button class="deploy-btn">Deploy</button>
   </div>
-  -->
 </header>
 
 <style>

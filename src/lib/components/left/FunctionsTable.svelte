@@ -118,7 +118,8 @@
   .table-section {
     display: flex;
     flex-direction: column;
-    height: 40%;
+    flex: 4;
+    min-height: 0;
     padding: 1rem;
     background: var(--color-surface-container);
     overflow: hidden;
