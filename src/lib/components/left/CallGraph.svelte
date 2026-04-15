@@ -21,9 +21,13 @@
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   function cssColor(s: string): any { return s; }
 
-  const nodeW = 160;
+  // ~7.5px per char at 0.85rem (Svelvet's internal font-size) + 32px padding
+  function nodeWidth(fn: FnId): number {
+    return fnLabel(fn).length * 9 + 40;
+  }
+
   const nodeH = 40;
-  const hGap = 40;
+  const hGap = 48;
   const vGap = 80;
   const padX = 24;
   const padY = 24;
@@ -60,7 +64,13 @@
       for (const callee of callees) pred.get(fnKey(callee))?.push(ck);
     }
 
-    // ── 4. d3-dag Sugiyama layout ─────────────────────────────────────────
+    // ── 4. Compute per-node widths ────────────────────────────────────────
+    const widths = new Map<string, number>();
+    for (const n of nodes) widths.set(fnKey(n), nodeWidth(n));
+    // Use max width as the uniform nodeSize for the layout algorithm
+    const maxW = Math.max(...widths.values());
+
+    // ── 5. d3-dag Sugiyama layout ─────────────────────────────────────────
     // graphStratify supports isolated nodes (parentIds: []) unlike graphConnect.
     // nodeSize is the node bounding box; gap adds spacing between boxes.
     // node.x / node.y are CENTER coordinates — subtract half-dimensions for Svelvet.
@@ -76,12 +86,13 @@
         .id((d: NodeDatum) => d.id)
         .parentIds((d: NodeDatum) => d.parentIds)(dagData);
 
-      sugiyama().nodeSize([nodeW, nodeH]).gap([hGap, vGap])(dag);
+      sugiyama().nodeSize([maxW, nodeH]).gap([hGap, vGap])(dag);
 
       positions = new Map();
       for (const node of dag.nodes()) {
+        const w = widths.get((node.data as NodeDatum).id) ?? maxW;
         positions.set((node.data as NodeDatum).id, {
-          x: padX + node.x - nodeW / 2,
+          x: padX + node.x - w / 2,
           y: padY + node.y - nodeH / 2,
         });
       }
@@ -89,14 +100,15 @@
       // Fallback grid if d3-dag rejects the graph (e.g. cycle)
       positions = new Map();
       nodes.forEach((n, i) => {
+        const w = widths.get(fnKey(n)) ?? 160;
         positions.set(fnKey(n), {
-          x: padX + (i % 5) * (nodeW + hGap),
+          x: padX + (i % 5) * (w + hGap),
           y: padY + Math.floor(i / 5) * (nodeH + vGap),
         });
       });
     }
 
-    return { nodes, positions, connections, idMap };
+    return { nodes, positions, connections, idMap, widths };
   });
 </script>
 
@@ -137,6 +149,7 @@
             {@const isChanged = changedKeys.has(fnKey(node))}
             {@const nodeId = layout.idMap.get(fnKey(node))!}
             {@const calleeIds = layout.connections.get(fnKey(node)) ?? []}
+            {@const w = layout.widths.get(fnKey(node)) ?? 160}
             <Node
               id={nodeId}
               label={fnLabel(node)}
@@ -145,7 +158,7 @@
               bgColor={cssColor(isChanged ? 'var(--color-primary-container)' : 'var(--color-surface-container-highest)')}
               textColor={cssColor(isChanged ? 'var(--color-primary)' : 'var(--color-on-surface-variant)')}
               borderColor={cssColor(isChanged ? 'var(--color-primary-dim)' : 'var(--color-outline-variant)')}
-              width={nodeW}
+              width={w}
               height={nodeH}
               inputs={1}
               outputs={1}
