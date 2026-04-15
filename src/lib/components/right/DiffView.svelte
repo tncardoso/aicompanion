@@ -1,6 +1,9 @@
 <script lang="ts">
   import { appState } from '$lib/store.svelte';
+  import { readFile } from '$lib/tauri';
   import type { FileDiff, Hunk, DiffLine } from '$lib/types';
+
+  let scrollEl = $state<HTMLElement | null>(null);
 
   interface LineEntry {
     leftNum: number | null;
@@ -59,6 +62,17 @@
     }));
   }
 
+  function buildPlainLines(content: string): LineEntry[] {
+    const fileLines = content.split('\n');
+    if (fileLines[fileLines.length - 1] === '') fileLines.pop();
+    return fileLines.map((line, i) => ({
+      leftNum: i + 1,
+      rightNum: i + 1,
+      content: line,
+      kind: 'context' as const,
+    }));
+  }
+
   const activeDiff = $derived(
     appState.gitState?.diffs.find((d) => d.path === appState.activeTab) ?? null
   );
@@ -69,25 +83,46 @@
 
   const isUntracked = $derived(activeUntracked != null);
 
+  let plainContent = $state<string | null>(null);
+
+  $effect(() => {
+    const tab = appState.activeTab;
+    const root = appState.gitState?.repo_root;
+    if (!tab || !root || activeDiff || isUntracked) {
+      plainContent = null;
+      return;
+    }
+    readFile(`${root}/${tab}`).then(c => { plainContent = c; }).catch(() => { plainContent = null; });
+  });
+
   const lines = $derived(
     activeDiff
       ? buildLines(activeDiff)
       : activeUntracked
         ? buildUntrackedLines(activeUntracked.content)
-        : []
+        : plainContent !== null
+          ? buildPlainLines(plainContent)
+          : []
   );
+
+  const lineHeight = 13 * 1.6; // matches CSS: font-size 13px, line-height 1.6
+  const padTop = 16;            // 1rem padding-top on line-numbers / code-lines
+
+  $effect(() => {
+    const target = appState.activeLine;
+    if (!target || !scrollEl || lines.length === 0) return;
+    // Find the rendered index of the target line (rightNum for added/context, leftNum for removed)
+    const idx = lines.findIndex(l => (l.rightNum ?? l.leftNum) === target);
+    const row = idx >= 0 ? idx : target - 1;
+    scrollEl.scrollTop = padTop + row * lineHeight - scrollEl.clientHeight / 3;
+  });
 </script>
 
-<div class="diff-view">
+<div class="diff-view" bind:this={scrollEl}>
   {#if !appState.activeTab}
     <div class="no-file">
       <span class="material-symbols-outlined">code_off</span>
       <p>Select a file to view its diff</p>
-    </div>
-  {:else if !activeDiff && !isUntracked}
-    <div class="no-file">
-      <span class="material-symbols-outlined">check_circle</span>
-      <p>No changes in this file</p>
     </div>
   {:else}
     <div class="code-area">

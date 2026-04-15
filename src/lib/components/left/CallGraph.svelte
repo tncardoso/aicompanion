@@ -4,6 +4,15 @@
   import { appState } from '$lib/store.svelte';
   import type { FnId } from '$lib/types';
 
+  function openTab(fn: FnId) {
+    if (!appState.openTabs.includes(fn.file)) {
+      appState.openTabs = [...appState.openTabs, fn.file];
+    }
+    appState.activeTab = fn.file;
+    const metric = appState.analysis?.metrics.find(m => m.file === fn.file && m.name === fn.name);
+    appState.activeLine = metric?.line ?? null;
+  }
+
   function fnLabel(fn: FnId): string {
     const stem = fn.file.split('/').pop()?.replace(/\.[^/.]+$/, '') ?? fn.file;
     return `${stem}::${fn.name}`;
@@ -163,6 +172,7 @@
               inputs={1}
               outputs={1}
               editable={false}
+              on:nodeClicked={() => openTab(node)}
             />
           {/each}
         </Svelvet>
@@ -225,6 +235,10 @@
     background: transparent;
     --default-edge-color: var(--color-outline);
     --default-background-color: transparent;
+  }
+
+  .graph-container :global(.svelvet-node) {
+    cursor: pointer;
   }
 
   .bg-svg {

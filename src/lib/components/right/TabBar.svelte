@@ -126,12 +126,7 @@
     padding: 0;
     margin-left: auto;
     flex-shrink: 0;
-    opacity: 0;
-    transition: opacity 150ms, color 150ms;
-  }
-
-  .tab:hover .close-btn {
-    opacity: 1;
+    transition: color 150ms;
   }
 
   .close-btn:hover {

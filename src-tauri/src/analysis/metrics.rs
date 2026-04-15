@@ -9,6 +9,7 @@ use super::parser::{call_query, function_def_query};
 pub struct FunctionMetrics {
     pub file: String,
     pub name: String,
+    pub line: u32,
     pub cyclomatic: u32,
     pub cognitive: u32,
     pub coupling: u32,
@@ -20,6 +21,7 @@ pub struct FunctionMetrics {
 pub struct FunctionMetricsDelta {
     pub file: String,
     pub name: String,
+    pub line: u32,
     pub cyclomatic: u32,
     pub cognitive: u32,
     pub coupling: u32,
@@ -55,6 +57,7 @@ pub fn compute_deltas(
             FunctionMetricsDelta {
                 file: m.file.clone(),
                 name: m.name.clone(),
+                line: m.line,
                 cyclomatic: m.cyclomatic,
                 cognitive: m.cognitive,
                 coupling: m.coupling,
@@ -120,12 +123,14 @@ pub fn analyse_file(file: &str, source: &str, ext: &str, language: &Language) ->
                     continue;
                 }
                 let fn_node = cap.node.parent().unwrap_or(root);
+                let line = fn_node.start_position().row as u32 + 1;
                 let cyclomatic = compute_cyclomatic(fn_node, source_bytes, ext);
                 let cognitive = compute_cognitive(fn_node, 0, source_bytes, ext);
                 let coupling = compute_coupling(fn_node, source_bytes, ext, language);
                 results.push(FunctionMetrics {
                     file: file.to_string(),
                     name: fn_name.clone(),
+                    line,
                     cyclomatic,
                     cognitive,
                     coupling,

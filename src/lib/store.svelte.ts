@@ -7,6 +7,7 @@ class AppState {
   config = $state<Config | null>(null);
   openTabs = $state<string[]>([]);
   activeTab = $state<string | null>(null);
+  activeLine = $state<number | null>(null);
   sortOrder = $state<MetricSort>('cyclomatic_value');
   loading = $state(false);
   error = $state<string | null>(null);

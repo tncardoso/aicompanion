@@ -44,6 +44,7 @@ export interface CallGraph {
 export interface FunctionMetricsDelta {
   file: string;
   name: string;
+  line: number;
   cyclomatic: number;
   cognitive: number;
   coupling: number;

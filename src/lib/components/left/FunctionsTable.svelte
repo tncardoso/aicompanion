@@ -32,11 +32,12 @@
     return String(delta);
   }
 
-  function openTab(file: string) {
+  function openTab(file: string, line: number) {
     if (!appState.openTabs.includes(file)) {
       appState.openTabs = [...appState.openTabs, file];
     }
     appState.activeTab = file;
+    appState.activeLine = line;
   }
 
   function shortName(file: string): string {
@@ -83,8 +84,8 @@
               class:warn={hasWarning(m)}
               role="button"
               tabindex="0"
-              onclick={() => openTab(m.file)}
-              onkeydown={(e) => e.key === 'Enter' && openTab(m.file)}
+              onclick={() => openTab(m.file, m.line)}
+              onkeydown={(e) => e.key === 'Enter' && openTab(m.file, m.line)}
             >
               <td class="td-fn">
                 <span class="dot" class:dot-modified={status === 'modified'} class:dot-added={status === 'added'}></span>

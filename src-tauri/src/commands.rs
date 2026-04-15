@@ -37,6 +37,11 @@ pub async fn get_config(repo_path: String) -> Result<config::Config, String> {
 }
 
 #[tauri::command]
+pub async fn read_file(path: String) -> Result<String, String> {
+    std::fs::read_to_string(&path).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
 pub async fn watch_repo(
     repo_path: String,
     app: AppHandle,

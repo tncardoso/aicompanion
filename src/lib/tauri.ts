@@ -14,6 +14,9 @@ export const runAnalysis = (repoPath: string) =>
 export const getConfig = (repoPath: string) =>
   invoke<Config>('get_config', { repoPath });
 
+export const readFile = (path: string) =>
+  invoke<string>('read_file', { path });
+
 export const watchRepo = (repoPath: string) =>
   invoke<void>('watch_repo', { repoPath });
 
