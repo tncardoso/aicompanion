@@ -64,34 +64,51 @@
         <p>No functions changed</p>
       </div>
     {:else}
-      {#each sortedMetrics as m (m.file + '::' + m.name)}
-        {@const status = getStatus(m)}
-        {@const warn = hasWarning(m)}
-        <div
-          class="fn-row"
-          class:warn
-          role="button"
-          tabindex="0"
-          onclick={() => openTab(m.file)}
-          onkeydown={(e) => e.key === 'Enter' && openTab(m.file)}
-        >
-          <div class="fn-left">
-            <span class="dot" class:dot-modified={status === 'modified'} class:dot-added={status === 'added'}></span>
-            <span class="fn-name" class:line-through={false} title="{m.file}::{m.name}">{m.name}</span>
-            <span class="fn-file">{shortName(m.file)}</span>
-          </div>
-          <div class="fn-right">
-            <span class="metrics">
-              <span class="metric" class:metric-warn={m.cyclomatic > (appState.config?.thresholds.cyclomatic ?? 10)}>
-                C:{m.cyclomatic}<span class="delta">{formatDelta(m.cyclomatic_delta)}</span>
-              </span>
-            </span>
-            <span class="badge" class:badge-modified={status === 'modified'} class:badge-added={status === 'added'}>
-              {status === 'modified' ? 'Modified' : 'Added'}
-            </span>
-          </div>
-        </div>
-      {/each}
+      <table>
+        <thead>
+          <tr>
+            <th class="th-fn">Function</th>
+            <th class="th-metric">Cycl</th>
+            <th class="th-metric">Cog</th>
+            <th class="th-metric">Cpl</th>
+            <th class="th-status">Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {#each sortedMetrics as m (m.file + '::' + m.name)}
+            {@const status = getStatus(m)}
+            {@const t = appState.config?.thresholds ?? { cyclomatic: 10, cognitive: 15, coupling: 5 }}
+            <tr
+              class="fn-row"
+              class:warn={hasWarning(m)}
+              role="button"
+              tabindex="0"
+              onclick={() => openTab(m.file)}
+              onkeydown={(e) => e.key === 'Enter' && openTab(m.file)}
+            >
+              <td class="td-fn">
+                <span class="dot" class:dot-modified={status === 'modified'} class:dot-added={status === 'added'}></span>
+                <span class="fn-name" title="{m.file}::{m.name}">{m.name}</span>
+                <span class="fn-file">{shortName(m.file)}</span>
+              </td>
+              <td class="td-metric" class:metric-warn={m.cyclomatic > t.cyclomatic}>
+                {m.cyclomatic} <span class="delta">({formatDelta(m.cyclomatic_delta)})</span>
+              </td>
+              <td class="td-metric" class:metric-warn={m.cognitive > t.cognitive}>
+                {m.cognitive} <span class="delta">({formatDelta(m.cognitive_delta)})</span>
+              </td>
+              <td class="td-metric" class:metric-warn={m.coupling > t.coupling}>
+                {m.coupling} <span class="delta">({formatDelta(m.coupling_delta)})</span>
+              </td>
+              <td class="td-status">
+                <span class="badge" class:badge-modified={status === 'modified'} class:badge-added={status === 'added'}>
+                  {status === 'modified' ? 'Modified' : 'Added'}
+                </span>
+              </td>
+            </tr>
+          {/each}
+        </tbody>
+      </table>
     {/if}
   </div>
 </div>
@@ -143,37 +160,69 @@
   .table-body {
     flex: 1;
     overflow-y: auto;
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
   }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+  }
+
+  thead th {
+    font-size: 10px;
+    font-family: var(--font-body);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--color-secondary-dim);
+    font-weight: 700;
+    padding: 0 8px 6px;
+    border-bottom: 1px solid var(--color-outline-variant);
+  }
+
+  .th-fn { text-align: left; width: auto; }
+  .th-metric { text-align: right; width: 80px; }
+  .th-status { text-align: right; width: 72px; }
 
   .fn-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 6px 8px;
-    border-radius: 0.25rem;
     cursor: pointer;
     transition: background 150ms;
-    gap: 8px;
   }
 
-  .fn-row:hover {
+  .fn-row:hover td {
     background: var(--color-surface-container-high);
-    border-radius: 0.25rem;
   }
+
+  .fn-row:hover td:first-child { border-radius: 0.25rem 0 0 0.25rem; }
+  .fn-row:hover td:last-child { border-radius: 0 0.25rem 0.25rem 0; }
 
   .fn-row.warn .fn-name {
     color: var(--color-error);
   }
 
-  .fn-left {
+  .td-fn {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 8px;
+    padding: 5px 8px;
     min-width: 0;
-    flex: 1;
+  }
+
+  .td-metric {
+    font-size: 10px;
+    font-family: var(--font-mono);
+    color: var(--color-on-surface-variant);
+    text-align: right;
+    padding: 5px 8px;
+    white-space: nowrap;
+  }
+
+  .td-metric.metric-warn {
+    color: var(--color-error-dim);
+  }
+
+  .td-status {
+    text-align: right;
+    padding: 5px 8px;
   }
 
   .dot {
@@ -202,31 +251,8 @@
     flex-shrink: 0;
   }
 
-  .fn-right {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex-shrink: 0;
-  }
-
-  .metrics {
-    display: flex;
-    gap: 6px;
-  }
-
-  .metric {
-    font-size: 10px;
-    font-family: var(--font-mono);
-    color: var(--color-on-surface-variant);
-  }
-
-  .metric.metric-warn {
-    color: var(--color-error-dim);
-  }
-
   .delta {
     color: var(--color-secondary);
-    margin-left: 2px;
   }
 
   .badge {
